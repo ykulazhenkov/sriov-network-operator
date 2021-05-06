@@ -84,6 +84,9 @@ var _ = BeforeSuite(func(done Done) {
 	err = mcfgv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
+	err = sriovnetworkv1.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+
 	// +kubebuilder:scaffold:scheme
 
 	// A client is created for our test CRUD operations.

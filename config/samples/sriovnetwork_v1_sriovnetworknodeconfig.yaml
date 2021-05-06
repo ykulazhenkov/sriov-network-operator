@@ -1,0 +1,7 @@
+apiVersion: sriovnetwork.openshift.io/v1
+kind: SriovNetworkNodeConfig
+metadata:
+  name: sriovnetworknodeconfig-sample
+spec:
+  # Add fields here
+  foo: bar

@@ -118,6 +118,14 @@ func main() {
 		setupLog.Error(err, "unable to create controllers", "controllers", "SriovOperatorConfig")
 		os.Exit(1)
 	}
+	if err = (&controllers.SriovNetworkNodeConfigReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("SriovNetworkNodeConfig"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "SriovNetworkNodeConfig")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	// Create a default SriovNetworkNodePolicy
