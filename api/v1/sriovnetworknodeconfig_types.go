@@ -4,22 +4,36 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // SriovNetworkNodeConfigSpec defines the desired state of SriovNetworkNodeConfig
 type SriovNetworkNodeConfigSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// OvsHardwareOffload describes the OVS HWOL configuration for selected Nodes
+	OvsHardwareOffload []OvsHardwareOffloadConfig `json:"ovsHardwareOffload,omitempty"`
+}
 
-	// Foo is an example field of SriovNetworkNodeConfig. Edit sriovnetworknodeconfig_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+type OvsHardwareOffloadConfig struct {
+	// On Kubernetes:
+	// NodeSelector selects Kubernetes Nodes to be configured with OVS HWOL configurations
+	// OVS HWOL configurations are generated automatically by Operator
+	// Labels in NodeSelector are ANDed when selecting Kubernetes Nodes
+	// On OpenShift:
+	// NodeSelector matches on Labels defined in MachineConfigPoolSpec.NodeSelector
+	// OVS HWOL MachineConfigs are generated and applied to Nodes in MachineConfigPool
+	// Labels in NodeSelector are ANDed when matching on MachineConfigPoolSpec.NodeSelector
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+}
+
+type OvsHardwareOffloadConfigStatus struct {
+	// On Kubernetes:
+	// Nodes shows the selected names of Kubernetes Nodes that are configured with OVS HWOL
+	// On OpenShift:
+	// Nodes shows the selected names of MachineConfigPools that are configured with OVS HWOL
+	Nodes []string `json:"nodes,omitempty"`
 }
 
 // SriovNetworkNodeConfigStatus defines the observed state of SriovNetworkNodeConfig
 type SriovNetworkNodeConfigStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Show the runtime status of OvsHardwareOffload
+	OvsHardwareOffload []OvsHardwareOffloadConfigStatus `json:"ovsHardwareOffload,omitempty"`
 }
 
 //+kubebuilder:object:root=true
