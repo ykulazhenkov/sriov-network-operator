@@ -37,11 +37,25 @@ spec:
           spec:
             description: SriovNetworkNodeStateSpec defines the desired state of SriovNetworkNodeState
             properties:
+              bridges:
+                items:
+                  description: Linux Bridge configuration
+                  properties:
+                    name:
+                      type: string
+                    options:
+                      additionalProperties:
+                        type: string
+                      type: object
+                  type: object
+                type: array
               dpConfigVersion:
                 type: string
               interfaces:
                 items:
                   properties:
+                    bridge:
+                      type: string
                     eSwitchMode:
                       type: string
                     linkType:
@@ -109,6 +123,8 @@ spec:
                         - vfID
                         type: object
                       type: array
+                    bridge:
+                      type: string
                     deviceID:
                       type: string
                     driver:

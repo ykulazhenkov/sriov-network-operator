@@ -38,6 +38,14 @@ type SriovNetworkNodePolicySpec struct {
 	// +kubebuilder:validation:Enum=legacy;switchdev
 	// NIC Device Mode. Allowed value "legacy","switchdev".
 	EswitchMode string `json:"eSwitchMode,omitempty"`
+	// Linux bridge config valid when LinkType "eth" and EswitchMode is "switchdev"
+	Bridge Bridge `json:"bridge,omitempty"`
+}
+
+// Linux Bridge configuration
+type Bridge struct {
+	Name string `json:"name,omitempty"`
+	Options map[string]string `json:"options,omitempty"`
 }
 
 // +k8s:openapi-gen=false

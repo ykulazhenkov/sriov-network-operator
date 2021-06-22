@@ -12,7 +12,10 @@ import (
 type SriovNetworkNodeStateSpec struct {
 	DpConfigVersion string     `json:"dpConfigVersion,omitempty"`
 	Interfaces      Interfaces `json:"interfaces,omitempty"`
+	Bridges         Bridges    `json:"bridges,omitempty"`
 }
+
+type Bridges []Bridge
 
 type Interface struct {
 	PciAddress  string    `json:"pciAddress"`
@@ -21,6 +24,7 @@ type Interface struct {
 	Name        string    `json:"name,omitempty"`
 	LinkType    string    `json:"linkType,omitempty"`
 	EswitchMode string    `json:"eSwitchMode,omitempty"`
+	Bridge      string    `json:"bridge,omitempty"`
 	VfGroups    []VfGroup `json:"vfGroups,omitempty"`
 }
 
@@ -47,6 +51,7 @@ type InterfaceExt struct {
 	LinkSpeed   string            `json:"linkSpeed,omitempty"`
 	LinkType    string            `json:"linkType,omitempty"`
 	EswitchMode string            `json:"eSwitchMode,omitempty"`
+	Bridge      string            `json:"bridge,omitempty"`
 	TotalVfs    int               `json:"totalvfs,omitempty"`
 	VFs         []VirtualFunction `json:"Vfs,omitempty"`
 }

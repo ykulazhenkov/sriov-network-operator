@@ -181,6 +181,11 @@ func needUpdate(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.Int
 		}
 	}
 
+	if iface.Bridge != ifaceStatus.Bridge {
+		glog.V(2).Infof("needUpdate(): Bridge needs update desired=%s, current=%s", iface.Bridge, ifaceStatus.Bridge)
+		return true
+	}
+
 	if iface.NumVfs != ifaceStatus.NumVfs {
 		glog.V(2).Infof("needUpdate(): NumVfs needs update desired=%d, current=%d", iface.NumVfs, ifaceStatus.NumVfs)
 		return true
@@ -327,6 +332,20 @@ func configSriovDevice(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetwor
 	}
 	if pfLink.Attrs().OperState != netlink.OperUp {
 		err = netlink.LinkSetUp(pfLink)
+		if err != nil {
+			return err
+		}
+	}
+	if iface.Bridge != "" && iface.Bridge != ifaceStatus.Bridge {
+		br, err := netlink.LinkByName(iface.Bridge)
+		if err != nil {
+			return err
+		}
+		link, err := netlink.LinkByName(iface.Name)
+		if err != nil {
+			return err
+		}
+		err = netlink.LinkSetMaster(link, br)
 		if err != nil {
 			return err
 		}

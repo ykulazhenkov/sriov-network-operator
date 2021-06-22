@@ -37,6 +37,17 @@ spec:
           spec:
             description: SriovNetworkNodePolicySpec defines the desired state of SriovNetworkNodePolicy
             properties:
+              bridge:
+                description: Linux bridge config valid when LinkType "eth" and EswitchMode
+                  is "switchdev"
+                properties:
+                  name:
+                    type: string
+                  options:
+                    additionalProperties:
+                      type: string
+                    type: object
+                type: object
               deviceType:
                 description: The driver type for configured VFs. Allowed value "netdevice",
                   "vfio-pci". Defaults to netdevice.

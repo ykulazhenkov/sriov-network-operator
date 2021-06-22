@@ -308,6 +308,16 @@ func (p *SriovNetworkNodePolicy) Apply(state *SriovNetworkNodeState, merge bool)
 		// Empty NicSelector match none
 		return
 	}
+	var brFound bool
+	for _, br := range state.Spec.Bridges {
+		if br.Name == p.Spec.Bridge.Name {
+			brFound = true
+			break
+		}
+	}
+	if !brFound {
+		state.Spec.Bridges = append(state.Spec.Bridges, p.Spec.Bridge)
+	}
 	for _, iface := range state.Status.Interfaces {
 		if s.Selected(&iface) {
 			log.Info("Update interface", "name:", iface.Name)
