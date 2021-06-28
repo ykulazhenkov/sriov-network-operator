@@ -655,7 +655,7 @@ func (dn *Daemon) loadVendorPlugins(ns *sriovnetworkv1.SriovNetworkNodeState) er
 		} else {
 			pl = append(pl, K8sPlugin)
 		}
-		pl = append(pl, GenericPlugin)
+		pl = append(pl, RDMAPlugin, GenericPlugin)
 	}
 
 	dn.LoadedPlugins = make(map[string]VendorPlugin)

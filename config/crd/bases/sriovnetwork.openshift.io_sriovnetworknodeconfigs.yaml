@@ -56,6 +56,17 @@ spec:
                       type: object
                   type: object
                 type: array
+              rdmaExclusiveMode:
+                description: RDMAExclusiveMode enables RDMA exclusive mode for the
+                  selected nodes
+                items:
+                  properties:
+                    nodeSelector:
+                      additionalProperties:
+                        type: string
+                      type: object
+                  type: object
+                type: array
             type: object
           status:
             description: SriovNetworkNodeConfigStatus defines the observed state of
@@ -70,6 +81,15 @@ spec:
                         of Kubernetes Nodes that are configured with OVS HWOL On OpenShift:
                         Nodes shows the selected names of MachineConfigPools that
                         are configured with OVS HWOL'
+                      items:
+                        type: string
+                      type: array
+                  type: object
+                type: array
+              rdmaExclusiveMode:
+                items:
+                  properties:
+                    nodes:
                       items:
                         type: string
                       type: array
