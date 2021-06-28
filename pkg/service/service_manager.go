@@ -14,6 +14,7 @@ type ServiceManager interface {
 	IsServiceExist(string) (bool, error)
 	ReadService(string) (*Service, error)
 	EnableService(service *Service) error
+	DisableService(service *Service) error
 }
 
 type serviceManager struct {
@@ -73,4 +74,26 @@ func (sm *serviceManager) EnableService(service *Service) error {
 	// Enable service
 	cmd := exec.Command("systemctl", "enable", service.Name)
 	return cmd.Run()
+}
+
+// DisableService disable systemd service
+func (sm *serviceManager) DisableService(service *Service) error {
+	// Change root dir
+	exit, err := utils.Chroot(sm.chroot)
+	if err != nil {
+		return err
+	}
+	defer exit()
+
+	// Disable service
+	cmd := exec.Command("systemctl", "disable", service.Name)
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	if err := os.Remove(service.Path); err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
 }

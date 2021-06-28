@@ -6,8 +6,14 @@ import (
 
 // SriovNetworkNodeConfigSpec defines the desired state of SriovNetworkNodeConfig
 type SriovNetworkNodeConfigSpec struct {
+	// RDMAExclusiveMode enables RDMA exclusive mode for the selected nodes
+	RDMAExclusiveMode []RDMAExclusiveModeConfig `json:"rdmaExclusiveMode,omitempty"`
 	// OvsHardwareOffload describes the OVS HWOL configuration for selected Nodes
 	OvsHardwareOffload []OvsHardwareOffloadConfig `json:"ovsHardwareOffload,omitempty"`
+}
+
+type RDMAExclusiveModeConfig struct {
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 }
 
 type OvsHardwareOffloadConfig struct {
@@ -22,6 +28,10 @@ type OvsHardwareOffloadConfig struct {
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 }
 
+type RDMAExclusiveModeConfigStatus struct {
+	Nodes []string `json:"nodes,omitempty"`
+}
+
 type OvsHardwareOffloadConfigStatus struct {
 	// On Kubernetes:
 	// Nodes shows the selected names of Kubernetes Nodes that are configured with OVS HWOL
@@ -34,6 +44,7 @@ type OvsHardwareOffloadConfigStatus struct {
 type SriovNetworkNodeConfigStatus struct {
 	// Show the runtime status of OvsHardwareOffload
 	OvsHardwareOffload []OvsHardwareOffloadConfigStatus `json:"ovsHardwareOffload,omitempty"`
+	RDMAExclusiveMode  []RDMAExclusiveModeConfigStatus  `json:"rdmaExclusiveMode,omitempty"`
 }
 
 //+kubebuilder:object:root=true

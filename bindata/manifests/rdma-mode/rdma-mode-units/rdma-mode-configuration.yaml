@@ -1,0 +1,19 @@
+contents: |
+  [Unit]
+  Description=Configures RDMA mode on boot
+  Before=network-pre.target
+  Wants=netowork-pre.target
+
+  [Service]
+  Type=oneshot
+  RemainAfterExit=true
+  ExecStart=/bin/bash -c 'rdma system set netns exclusive'
+  Restart=on-failure
+  RestartSec=5s
+  StandardOutput=journal+console
+  StandardError=journal+console
+
+  [Install]
+  WantedBy=network-online.target
+enabled: true
+name: rdma-mode-configuration.service

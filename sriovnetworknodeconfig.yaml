@@ -1,7 +1,8 @@
 apiVersion: sriovnetwork.openshift.io/v1
 kind: SriovNetworkNodeConfig
 metadata:
-  name: sriovnetworknodeconfig-sample
+  name: default
+  namespace: sriov-network-operator
 spec:
   rdmaExclusiveMode:
     - nodeSelector:
