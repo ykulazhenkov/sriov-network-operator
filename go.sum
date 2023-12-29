@@ -289,8 +289,8 @@ github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHm
 github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1:6v2b51hI/fHJwM22ozAgKL4VKDeJcHhJFhtBdhmNjmU=
 github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/XSXhF0NWZEnDohbsk=
 github.com/jtolds/gls v4.2.1+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
-github.com/k8snetworkplumbingwg/govdpa v0.1.4 h1:e6mM7JFZkLVJeMQw3px96EigHAhnb4VUlqhNub/2Psk=
-github.com/k8snetworkplumbingwg/govdpa v0.1.4/go.mod h1:UQR1xu7A+nnRK1dkLEi12OnNL0OiBPpIKOYDuaQQkck=
+github.com/k8snetworkplumbingwg/govdpa v0.1.5-0.20230926073613-07c1031aea47 h1:iSncnlC+rtlNOIpPa3fbqQMhpTscGJIlkiWaPl1VcS4=
+github.com/k8snetworkplumbingwg/govdpa v0.1.5-0.20230926073613-07c1031aea47/go.mod h1:SPaDIyUmwN03Bgn0u/mhoiE4o/+koeKh11VUsdsUX0U=
 github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.4.0 h1:VzM3TYHDgqPkettiP6I6q2jOeQFL4nrJM+UcAc4f6Fs=
 github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.4.0/go.mod h1:nqCI7aelBJU61wiBeeZWJ6oi4bJy5nrjkM6lWIMA4j0=
 github.com/k8snetworkplumbingwg/sriov-network-device-plugin v0.0.0-20221127172732-a5a7395122e3 h1:hIHzF4vNTCFb9UMngrcJAMvdNslCekaSvNbfQt21CUw=
