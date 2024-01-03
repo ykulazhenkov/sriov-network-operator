@@ -156,14 +156,6 @@ func (p *GenericPlugin) Apply() error {
 		return err
 	}
 
-	// Create a map with all the PFs we will need to configure
-	// we need to create it here before we access the host file system using the chroot function
-	// because the skipConfigVf needs the mstconfig package that exist only inside the sriov-config-daemon file system
-	pfsToSkip, err := utils.GetPfsToSkip(p.DesireState)
-	if err != nil {
-		return err
-	}
-
 	// When calling from systemd do not try to chroot
 	if !p.RunningOnHost {
 		exit, err := utils.Chroot("/host")
@@ -173,7 +165,7 @@ func (p *GenericPlugin) Apply() error {
 		defer exit()
 	}
 
-	if err := utils.SyncNodeState(p.DesireState, pfsToSkip); err != nil {
+	if err := utils.SyncNodeState(p.DesireState); err != nil {
 		// Catch the "cannot allocate memory" error and try to use PCI realloc
 		if errors.Is(err, syscall.ENOMEM) {
 			p.addToDesiredKernelArgs(utils.KernelArgPciRealloc)
@@ -365,17 +357,6 @@ func (p *GenericPlugin) needRebootNode(state *sriovnetworkv1.SriovNetworkNodeSta
 		log.Log.V(2).Info("generic-plugin needRebootNode(): need reboot for updating kernel arguments")
 		needReboot = true
 	}
-
-	updateNode, err = utils.WriteSwitchdevConfFile(state)
-	if err != nil {
-		log.Log.Error(err, "generic-plugin needRebootNode(): fail to write switchdev device config file")
-		return false, err
-	}
-	if updateNode {
-		log.Log.V(2).Info("generic-plugin needRebootNode(): need reboot for updating switchdev device configuration")
-		needReboot = true
-	}
-
 	return needReboot, nil
 }
 

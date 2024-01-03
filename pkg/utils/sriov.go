@@ -54,22 +54,12 @@ func findInterface(interfaces sriovnetworkv1.Interfaces, name string) (iface sri
 }
 
 func WriteSwitchdevConfFile(newState *sriovnetworkv1.SriovNetworkNodeState) (update bool, err error) {
-	// Create a map with all the PFs we will need to SKIP for systemd configuration
-	pfsToSkip, err := GetPfsToSkip(newState)
-	if err != nil {
-		return false, err
-	}
 	cfg := config{}
 	for _, iface := range newState.Spec.Interfaces {
 		for _, ifaceStatus := range newState.Status.Interfaces {
 			if iface.PciAddress != ifaceStatus.PciAddress {
 				continue
 			}
-
-			if skip := pfsToSkip[iface.PciAddress]; !skip {
-				continue
-			}
-
 			i := sriovnetworkv1.Interface{}
 			if iface.NumVfs > 0 {
 				var vfGroups []sriovnetworkv1.VfGroup = nil
