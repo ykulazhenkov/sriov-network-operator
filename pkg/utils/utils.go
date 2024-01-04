@@ -35,6 +35,8 @@ import (
 )
 
 const (
+	sysBusPci             = "/sys/bus/pci"
+	sysBusVdpa            = "/sys/bus/vdpa"
 	sysBusPciDevices      = "/sys/bus/pci/devices"
 	sysBusPciDrivers      = "/sys/bus/pci/drivers"
 	sysBusPciDriversProbe = "/sys/bus/pci/drivers_probe"
