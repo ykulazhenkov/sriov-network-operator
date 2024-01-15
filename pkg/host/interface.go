@@ -19,7 +19,9 @@ const (
 	genericOSReleaseFile = "/etc/os-release"
 )
 
-// Contains all the host manipulation functions
+// Contains all the host manipulation functions.
+// Note: mock is generated in the same package to avoid circular imports
+//go:generate ../../bin/mockgen -destination interface_mock.go -package host -source interface.go
 type HostManagerInterface interface {
 	KernelInterface
 	NetworkInterface
