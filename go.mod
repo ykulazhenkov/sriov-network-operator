@@ -25,9 +25,9 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/vishvananda/netlink v1.1.1-0.20211101163509-b10eb8fe5cf6
 	github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae
+	go.uber.org/mock v0.4.0
 	go.uber.org/zap v1.25.0
 	golang.org/x/time v0.3.0
-	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.28.3
 	k8s.io/apiextensions-apiserver v0.28.3
@@ -140,6 +140,7 @@ require (
 	google.golang.org/grpc v1.54.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	howett.net/plist v1.0.0 // indirect
 	k8s.io/cli-runtime v0.28.3 // indirect
 	k8s.io/component-base v0.28.3 // indirect
