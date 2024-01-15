@@ -607,15 +607,19 @@ func (s *sriov) GetNicSriovMode(pciAddress string) (string, error) {
 	log.Log.V(2).Info("GetNicSriovMode()", "device", pciAddress)
 
 	devLink, err := netlink.DevLinkGetDeviceByName("pci", pciAddress)
-	if err != nil {
-		if errors.Is(err, syscall.ENODEV) {
-			// the device doesn't support devlink
-			return "", nil
-		}
+	if err != nil && !errors.Is(err, syscall.ENODEV) {
+		// the device doesn't support devlink
 		return "", err
 	}
-
-	return devLink.Attrs.Eswitch.Mode, nil
+	if devLink.Attrs.Eswitch.Mode != "" {
+		return devLink.Attrs.Eswitch.Mode, nil
+	}
+	if s.networkHelper.IsSwitchdev(pciAddress) {
+		return sriovnetworkv1.ESwithModeSwitchDev, nil
+	} else {
+		return sriovnetworkv1.ESwithModeLegacy, nil
+	}
+}
 }
 
 func (s *sriov) GetLinkType(ifaceStatus sriovnetworkv1.InterfaceExt) string {
