@@ -913,6 +913,20 @@ func (mr *MockHostHelpersInterfaceMockRecorder) SetNetdevMTU(arg0, arg1 interfac
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetNetdevMTU", reflect.TypeOf((*MockHostHelpersInterface)(nil).SetNetdevMTU), arg0, arg1)
 }
 
+// SetNicSriovMode mocks base method.
+func (m *MockHostHelpersInterface) SetNicSriovMode(arg0, arg1 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetNicSriovMode", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetNicSriovMode indicates an expected call of SetNicSriovMode.
+func (mr *MockHostHelpersInterfaceMockRecorder) SetNicSriovMode(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetNicSriovMode", reflect.TypeOf((*MockHostHelpersInterface)(nil).SetNicSriovMode), arg0, arg1)
+}
+
 // SetSriovNumVfs mocks base method.
 func (m *MockHostHelpersInterface) SetSriovNumVfs(arg0 string, arg1 int) error {
 	m.ctrl.T.Helper()

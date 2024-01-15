@@ -39,6 +39,9 @@ type SriovInterface interface {
 	// GetNicSriovMode returns the interface mode
 	// supported modes SR-IOV legacy and switchdev
 	GetNicSriovMode(string) (string, error)
+	// SetNicSriovMode configure the interface mode
+	// supported modes SR-IOV legacy and switchdev
+	SetNicSriovMode(string, string) error
 	// GetLinkType return the link type
 	// supported types are ethernet and infiniband
 	GetLinkType(sriovnetworkv1.InterfaceExt) string
@@ -620,6 +623,15 @@ func (s *sriov) GetNicSriovMode(pciAddress string) (string, error) {
 		return sriovnetworkv1.ESwithModeLegacy, nil
 	}
 }
+
+func (s *sriov) SetNicSriovMode(pciAddress string, mode string) error {
+	log.Log.V(2).Info("SetNicSriovMode()", "device", pciAddress, "mode", mode)
+
+	dev, err := netlink.DevLinkGetDeviceByName("pci", pciAddress)
+	if err != nil {
+		return err
+	}
+	return netlink.DevLinkSetEswitchMode(dev, mode)
 }
 
 func (s *sriov) GetLinkType(ifaceStatus sriovnetworkv1.InterfaceExt) string {
