@@ -1,4 +1,4 @@
-package host
+package store
 
 import (
 	"encoding/json"
@@ -16,7 +16,7 @@ import (
 
 // Contains all the file storing on the host
 //
-//go:generate ../../bin/mockgen -destination mock/mock_store.go -source store.go
+//go:generate ../../../bin/mockgen -destination mock/mock_store.go -source store.go
 type StoreManagerInterface interface {
 	ClearPCIAddressFolder() error
 	SaveLastPfAppliedStatus(PfInfo *sriovnetworkv1.Interface) error
