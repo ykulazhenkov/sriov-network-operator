@@ -35,7 +35,7 @@ var _ = Describe("SRIOV", func() {
 		netlinkLibMock = netlinkMockPkg.NewMockNetlinkLib(testCtrl)
 		dputilsLibMock = dputilsMockPkg.NewMockDPUtilsLib(testCtrl)
 		hostMock = hostMockPkg.NewMockHostManagerInterface(testCtrl)
-		s = New(nil, hostMock, hostMock, hostMock, netlinkLibMock, dputilsLibMock)
+		s = New(nil, hostMock, hostMock, hostMock, hostMock, netlinkLibMock, dputilsLibMock)
 	})
 
 	AfterEach(func() {
