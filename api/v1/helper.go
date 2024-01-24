@@ -234,6 +234,27 @@ func FindInterface(interfaces Interfaces, name string) (iface Interface, err err
 	return Interface{}, fmt.Errorf("unable to find interface: %v", name)
 }
 
+// NeedToUpdateInterfaceEswitchMode returns true if eswitch mode for the interface requires update
+func NeedToUpdateInterfaceEswitchMode(ifaceSpec *Interface, ifaceStatus *InterfaceExt) bool {
+	return GetEswitchModeFromStatus(ifaceStatus) != GetEswitchModeFromSpec(ifaceSpec)
+}
+
+// GetEswitchModeFromSpec returns ESwitchMode from the interface spec, returns legacy if not set
+func GetEswitchModeFromSpec(ifaceSpec *Interface) string {
+	if ifaceSpec.EswitchMode == "" {
+		return ESwithModeLegacy
+	}
+	return ifaceSpec.EswitchMode
+}
+
+// GetEswitchModeFromStatus returns ESwitchMode from the interface status, returns legacy if not set
+func GetEswitchModeFromStatus(ifaceStatus *InterfaceExt) string {
+	if ifaceStatus.EswitchMode == "" {
+		return ESwithModeLegacy
+	}
+	return ifaceStatus.EswitchMode
+}
+
 func NeedToUpdateSriov(ifaceSpec *Interface, ifaceStatus *InterfaceExt) bool {
 	if ifaceSpec.Mtu > 0 {
 		mtu := ifaceSpec.Mtu
