@@ -56,7 +56,7 @@ func enablePlugins(ns *sriovnetworkv1.SriovNetworkNodeState, helpers helper.Host
 			}
 			enabledPlugins[k8sPlugin.Name()] = k8sPlugin
 		}
-		genericPlugin, err := GenericPlugin(helpers)
+		genericPlugin, err := GenericPlugin(helpers, "")
 		if err != nil {
 			log.Log.Error(err, "enableVendorPlugins(): failed to load the generic plugin")
 			return nil, err

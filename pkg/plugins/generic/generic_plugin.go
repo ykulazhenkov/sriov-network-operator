@@ -59,12 +59,17 @@ type GenericPlugin struct {
 	DesiredKernelArgs map[string]bool
 	pfsToSkip         map[string]bool
 	helpers           helper.HostHelpersInterface
+	phase             string
 }
 
 const scriptsPath = "bindata/scripts/enable-kargs.sh"
 
 // Initialize our plugin and set up initial values
-func NewGenericPlugin(helpers helper.HostHelpersInterface) (plugin.VendorPlugin, error) {
+// phase - controls which logic the plugin should execute
+// * "" - all logic
+// * "pre" - only VF creation logic
+// * "post" - only VF configuration logic
+func NewGenericPlugin(helpers helper.HostHelpersInterface, phase string) (plugin.VendorPlugin, error) {
 	driverStateMap := make(map[uint]*DriverState)
 	driverStateMap[Vfio] = &DriverState{
 		DriverName:     vfioPciDriver,
@@ -94,6 +99,7 @@ func NewGenericPlugin(helpers helper.HostHelpersInterface) (plugin.VendorPlugin,
 		DesiredKernelArgs: make(map[string]bool),
 		pfsToSkip:         make(map[string]bool),
 		helpers:           helpers,
+		phase:             phase,
 	}, nil
 }
 
@@ -109,7 +115,7 @@ func (p *GenericPlugin) Spec() string {
 
 // OnNodeStateChange Invoked when SriovNetworkNodeState CR is created or updated, return if need drain and/or reboot node
 func (p *GenericPlugin) OnNodeStateChange(new *sriovnetworkv1.SriovNetworkNodeState) (needDrain bool, needReboot bool, err error) {
-	log.Log.Info("generic-plugin OnNodeStateChange()")
+	log.Log.Info("generic-plugin OnNodeStateChange()", "phase", p.phase)
 	p.DesireState = new
 
 	needDrain = p.needDrainNode(new.Spec.Interfaces, new.Status.Interfaces)
@@ -140,7 +146,7 @@ func (p *GenericPlugin) syncDriverState() error {
 
 // Apply config change
 func (p *GenericPlugin) Apply() error {
-	log.Log.Info("generic-plugin Apply()", "desiredState", p.DesireState.Spec)
+	log.Log.Info("generic-plugin Apply()", "desiredState", p.DesireState.Spec, "phase", p.phase)
 
 	if p.LastState != nil {
 		log.Log.Info("generic-plugin Apply()", "lastState", p.LastState.Spec)

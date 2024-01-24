@@ -32,7 +32,7 @@ var _ = Describe("Generic plugin", func() {
 
 		hostHelper = mock_helper.NewMockHostHelpersInterface(ctrl)
 
-		genericPlugin, err = NewGenericPlugin(hostHelper)
+		genericPlugin, err = NewGenericPlugin(hostHelper, "")
 		Expect(err).ToNot(HaveOccurred())
 	})
 
