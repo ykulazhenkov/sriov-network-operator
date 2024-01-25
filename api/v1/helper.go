@@ -284,7 +284,7 @@ func NeedToUpdateSriov(ifaceSpec *Interface, ifaceStatus *InterfaceExt) bool {
 							return true
 						}
 					} else {
-						if StringInArray(vfStatus.Driver, vars.DpdkDrivers) {
+						if vfStatus.Driver == "" || StringInArray(vfStatus.Driver, vars.DpdkDrivers) {
 							log.V(2).Info("NeedToUpdateSriov(): Driver needs update",
 								"desired", groupSpec.DeviceType, "current", vfStatus.Driver)
 							return true
