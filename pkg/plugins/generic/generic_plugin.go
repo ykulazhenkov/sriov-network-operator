@@ -59,7 +59,7 @@ type GenericPlugin struct {
 	DesiredKernelArgs map[string]bool
 	pfsToSkip         map[string]bool
 	helpers           helper.HostHelpersInterface
-	phase             string
+	preConfigOnly     bool
 }
 
 const scriptsPath = "bindata/scripts/enable-kargs.sh"
@@ -69,7 +69,7 @@ const scriptsPath = "bindata/scripts/enable-kargs.sh"
 // * "" - all logic
 // * "pre" - only VF creation logic
 // * "post" - only VF configuration logic
-func NewGenericPlugin(helpers helper.HostHelpersInterface, phase string) (plugin.VendorPlugin, error) {
+func NewGenericPlugin(helpers helper.HostHelpersInterface, preConfigOnly bool) (plugin.VendorPlugin, error) {
 	driverStateMap := make(map[uint]*DriverState)
 	driverStateMap[Vfio] = &DriverState{
 		DriverName:     vfioPciDriver,
@@ -99,7 +99,7 @@ func NewGenericPlugin(helpers helper.HostHelpersInterface, phase string) (plugin
 		DesiredKernelArgs: make(map[string]bool),
 		pfsToSkip:         make(map[string]bool),
 		helpers:           helpers,
-		phase:             phase,
+		preConfigOnly:     preConfigOnly,
 	}, nil
 }
 
@@ -115,7 +115,7 @@ func (p *GenericPlugin) Spec() string {
 
 // OnNodeStateChange Invoked when SriovNetworkNodeState CR is created or updated, return if need drain and/or reboot node
 func (p *GenericPlugin) OnNodeStateChange(new *sriovnetworkv1.SriovNetworkNodeState) (needDrain bool, needReboot bool, err error) {
-	log.Log.Info("generic-plugin OnNodeStateChange()", "phase", p.phase)
+	log.Log.Info("generic-plugin OnNodeStateChange()", "preConfig", p.preConfigOnly)
 	p.DesireState = new
 
 	needDrain = p.needDrainNode(new.Spec.Interfaces, new.Status.Interfaces)
@@ -146,7 +146,7 @@ func (p *GenericPlugin) syncDriverState() error {
 
 // Apply config change
 func (p *GenericPlugin) Apply() error {
-	log.Log.Info("generic-plugin Apply()", "desiredState", p.DesireState.Spec, "phase", p.phase)
+	log.Log.Info("generic-plugin Apply()", "desiredState", p.DesireState.Spec, "preConfig", p.preConfigOnly)
 
 	if p.LastState != nil {
 		log.Log.Info("generic-plugin Apply()", "lastState", p.LastState.Spec)
@@ -169,7 +169,7 @@ func (p *GenericPlugin) Apply() error {
 		defer exit()
 	}
 
-	if err := p.helpers.ConfigSriovInterfaces(p.helpers, p.DesireState.Spec.Interfaces, p.DesireState.Status.Interfaces, p.pfsToSkip); err != nil {
+	if err := p.helpers.ConfigSriovInterfaces(p.helpers, p.DesireState.Spec.Interfaces, p.DesireState.Status.Interfaces, p.pfsToSkip, p.preConfigOnly); err != nil {
 		// Catch the "cannot allocate memory" error and try to use PCI realloc
 		if errors.Is(err, syscall.ENOMEM) {
 			p.addToDesiredKernelArgs(consts.KernelArgPciRealloc)

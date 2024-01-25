@@ -155,17 +155,17 @@ func (mr *MockHostHelpersInterfaceMockRecorder) CompareServices(serviceA, servic
 }
 
 // ConfigSriovDevice mocks base method.
-func (m *MockHostHelpersInterface) ConfigSriovDevice(iface *v1.Interface, ifaceStatus *v1.InterfaceExt) error {
+func (m *MockHostHelpersInterface) ConfigSriovDevice(iface *v1.Interface, ifaceStatus *v1.InterfaceExt, preConfig bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ConfigSriovDevice", iface, ifaceStatus)
+	ret := m.ctrl.Call(m, "ConfigSriovDevice", iface, ifaceStatus, preConfig)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ConfigSriovDevice indicates an expected call of ConfigSriovDevice.
-func (mr *MockHostHelpersInterfaceMockRecorder) ConfigSriovDevice(iface, ifaceStatus interface{}) *gomock.Call {
+func (mr *MockHostHelpersInterfaceMockRecorder) ConfigSriovDevice(iface, ifaceStatus, preConfig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfigSriovDevice", reflect.TypeOf((*MockHostHelpersInterface)(nil).ConfigSriovDevice), iface, ifaceStatus)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfigSriovDevice", reflect.TypeOf((*MockHostHelpersInterface)(nil).ConfigSriovDevice), iface, ifaceStatus, preConfig)
 }
 
 // ConfigSriovDeviceVirtual mocks base method.
@@ -183,17 +183,17 @@ func (mr *MockHostHelpersInterfaceMockRecorder) ConfigSriovDeviceVirtual(iface i
 }
 
 // ConfigSriovInterfaces mocks base method.
-func (m *MockHostHelpersInterface) ConfigSriovInterfaces(storeManager store.ManagerInterface, interfaces []v1.Interface, ifaceStatuses []v1.InterfaceExt, pfsToConfig map[string]bool) error {
+func (m *MockHostHelpersInterface) ConfigSriovInterfaces(storeManager store.ManagerInterface, interfaces []v1.Interface, ifaceStatuses []v1.InterfaceExt, pfsToConfig map[string]bool, preConfig bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ConfigSriovInterfaces", storeManager, interfaces, ifaceStatuses, pfsToConfig)
+	ret := m.ctrl.Call(m, "ConfigSriovInterfaces", storeManager, interfaces, ifaceStatuses, pfsToConfig, preConfig)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ConfigSriovInterfaces indicates an expected call of ConfigSriovInterfaces.
-func (mr *MockHostHelpersInterfaceMockRecorder) ConfigSriovInterfaces(storeManager, interfaces, ifaceStatuses, pfsToConfig interface{}) *gomock.Call {
+func (mr *MockHostHelpersInterfaceMockRecorder) ConfigSriovInterfaces(storeManager, interfaces, ifaceStatuses, pfsToConfig, preConfig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfigSriovInterfaces", reflect.TypeOf((*MockHostHelpersInterface)(nil).ConfigSriovInterfaces), storeManager, interfaces, ifaceStatuses, pfsToConfig)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfigSriovInterfaces", reflect.TypeOf((*MockHostHelpersInterface)(nil).ConfigSriovInterfaces), storeManager, interfaces, ifaceStatuses, pfsToConfig, preConfig)
 }
 
 // CreateVDPADevice mocks base method.

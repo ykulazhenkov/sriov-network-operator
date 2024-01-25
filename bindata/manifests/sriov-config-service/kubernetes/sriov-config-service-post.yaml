@@ -1,0 +1,16 @@
+contents: |
+  [Unit]
+  Description=Configures SRIOV NIC - pre network stage
+  DefaultDependencies=no
+  After=network-pre.target systemd-udev-settle.service systemd-sysusers.service systemd-sysctl.service
+  Before=network.target NetworkManager.service systemd-networkd.service ovs-vswitchd.service ovsdb-server.service
+
+  [Service]
+  Type=oneshot
+  ExecStart=/root/systemd-sandbox/sleep.sh pre
+  StandardOutput=journal+console
+
+  [Install]
+  WantedBy=multi-user.target
+enabled: true
+name: sriov-config-pre.service

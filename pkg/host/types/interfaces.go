@@ -143,10 +143,10 @@ type SriovInterface interface {
 	// DiscoverSriovDevices returns a list of all the available SR-IOV capable network interfaces on the system
 	DiscoverSriovDevices(storeManager store.ManagerInterface) ([]sriovnetworkv1.InterfaceExt, error)
 	// ConfigSriovDevice configure the request SR-IOV device with the desired configuration
-	ConfigSriovDevice(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt) error
+	ConfigSriovDevice(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt, preConfig bool) error
 	// ConfigSriovInterfaces configure multiple SR-IOV devices with the desired configuration
 	ConfigSriovInterfaces(storeManager store.ManagerInterface, interfaces []sriovnetworkv1.Interface,
-		ifaceStatuses []sriovnetworkv1.InterfaceExt, pfsToConfig map[string]bool) error
+		ifaceStatuses []sriovnetworkv1.InterfaceExt, pfsToConfig map[string]bool, preConfig bool) error
 	// ConfigSriovInterfaces configure virtual functions for virtual environments with the desired configuration
 	ConfigSriovDeviceVirtual(iface *sriovnetworkv1.Interface) error
 }

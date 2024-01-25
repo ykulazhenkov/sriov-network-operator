@@ -139,7 +139,7 @@ func runServiceCmd(cmd *cobra.Command, args []string) error {
 		}
 
 		// Create the generic plugin
-		configPlugin, err = generic.NewGenericPlugin(hostHelpers)
+		configPlugin, err = generic.NewGenericPlugin(hostHelpers, phase == PhasePre)
 		if err != nil {
 			setupLog.Error(err, "failed to create generic plugin")
 			return updateSriovResultErr(fmt.Errorf("sriov-config-service failed to create generic plugin %v", err))

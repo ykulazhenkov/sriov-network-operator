@@ -48,6 +48,48 @@ func (mr *MocksriovPrivateInterfaceMockRecorder) addUdevRules(iface interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "addUdevRules", reflect.TypeOf((*MocksriovPrivateInterface)(nil).addUdevRules), iface)
 }
 
+// checkExternallyManagedPF mocks base method.
+func (m *MocksriovPrivateInterface) checkExternallyManagedPF(iface *v1.Interface, ifaceStatus *v1.InterfaceExt) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "checkExternallyManagedPF", iface, ifaceStatus)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// checkExternallyManagedPF indicates an expected call of checkExternallyManagedPF.
+func (mr *MocksriovPrivateInterfaceMockRecorder) checkExternallyManagedPF(iface, ifaceStatus interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "checkExternallyManagedPF", reflect.TypeOf((*MocksriovPrivateInterface)(nil).checkExternallyManagedPF), iface, ifaceStatus)
+}
+
+// configSriovPFDevice mocks base method.
+func (m *MocksriovPrivateInterface) configSriovPFDevice(iface *v1.Interface, ifaceStatus *v1.InterfaceExt) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "configSriovPFDevice", iface, ifaceStatus)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// configSriovPFDevice indicates an expected call of configSriovPFDevice.
+func (mr *MocksriovPrivateInterfaceMockRecorder) configSriovPFDevice(iface, ifaceStatus interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "configSriovPFDevice", reflect.TypeOf((*MocksriovPrivateInterface)(nil).configSriovPFDevice), iface, ifaceStatus)
+}
+
+// configSriovVFDevices mocks base method.
+func (m *MocksriovPrivateInterface) configSriovVFDevices(iface *v1.Interface, ifaceStatus *v1.InterfaceExt) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "configSriovVFDevices", iface, ifaceStatus)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// configSriovVFDevices indicates an expected call of configSriovVFDevices.
+func (mr *MocksriovPrivateInterfaceMockRecorder) configSriovVFDevices(iface, ifaceStatus interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "configSriovVFDevices", reflect.TypeOf((*MocksriovPrivateInterface)(nil).configSriovVFDevices), iface, ifaceStatus)
+}
+
 // configureESwitchMode mocks base method.
 func (m *MocksriovPrivateInterface) configureESwitchMode(iface *v1.Interface, ifaceStatus *v1.InterfaceExt) error {
 	m.ctrl.T.Helper()

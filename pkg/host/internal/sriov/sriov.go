@@ -49,6 +49,9 @@ type sriovPrivateInterface interface {
 	createVFs(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt) error
 	createSwitchdevVFsBySwitchingToLegacy(iface *sriovnetworkv1.Interface) error
 	unbindAllVFsOnPF(addr string) error
+	configSriovPFDevice(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt) error
+	checkExternallyManagedPF(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt) error
+	configSriovVFDevices(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt) error
 }
 
 func New(utilsHelper utils.CmdInterface,
@@ -314,77 +317,81 @@ func (s *sriov) DiscoverSriovDevices(storeManager store.ManagerInterface) ([]sri
 	return pfList, nil
 }
 
-func (s *sriov) ConfigSriovDevice(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt) error {
-	log.Log.V(2).Info("configSriovDevice(): configure sriov device",
-		"device", iface.PciAddress, "config", iface)
-	var err error
+func (s *sriov) configSriovPFDevice(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt) error {
+	log.Log.V(2).Info("ConfigSriovPFDevice(): configure PF sriov device",
+		"device", iface.PciAddress)
+
 	if iface.NumVfs > ifaceStatus.TotalVfs {
 		err := fmt.Errorf("cannot config SRIOV device: NumVfs (%d) is larger than TotalVfs (%d)", iface.NumVfs, ifaceStatus.TotalVfs)
-		log.Log.Error(err, "configSriovDevice(): fail to set NumVfs for device", "device", iface.PciAddress)
+		log.Log.Error(err, "configSriovPFDevice(): fail to set NumVfs for device", "device", iface.PciAddress)
 		return err
 	}
-
-	expectedEswitchMode := sriovnetworkv1.GetEswitchModeFromSpec(iface)
-
-	if iface.ExternallyManaged {
-		if iface.NumVfs > ifaceStatus.NumVfs {
-			errMsg := fmt.Sprintf("ConfigSriovDevice(): number of request virtual functions %d is not equal to configured virtual "+
-				"functions %d but the policy is configured as ExternallyManaged for device %s",
-				iface.NumVfs, ifaceStatus.NumVfs, iface.PciAddress)
-			log.Log.Error(nil, errMsg)
-			return fmt.Errorf(errMsg)
-		}
-		if sriovnetworkv1.NeedToUpdateInterfaceEswitchMode(iface, ifaceStatus) {
-			errMsg := fmt.Sprintf("ConfigSriovDevice(): requested ESwitchMode mode \"%s\" is not equal to configured \"%s\" "+
-				"but the policy is configured as ExternallyManaged for device %s",
-				expectedEswitchMode, sriovnetworkv1.GetEswitchModeFromStatus(ifaceStatus), iface.PciAddress)
-			log.Log.Error(nil, errMsg)
-			return fmt.Errorf(errMsg)
-		}
-	} else {
-		if err := s.private.configureESwitchMode(iface, ifaceStatus); err != nil {
-			log.Log.Error(err, "ConfigSriovDevice(): fail to set eswitch mode for device", "device", iface.PciAddress)
-			return err
-		}
-		err = s.private.addUdevRules(iface)
-		if err != nil {
-			log.Log.Error(err, "ConfigSriovDevice(): fail to set add udev rules", "device", iface.PciAddress)
-			return err
-		}
-		err = s.private.createVFs(iface, ifaceStatus)
-		if err != nil {
-			log.Log.Error(err, "configSriovDevice(): fail to set NumVfs for device", "device", iface.PciAddress)
-			errRemove := s.private.removeUdevRules(iface.PciAddress)
-			if errRemove != nil {
-				log.Log.Error(errRemove, "configSriovDevice(): fail to remove udev rule", "device", iface.PciAddress)
-			}
-			return err
-		}
+	if err := s.private.configureESwitchMode(iface, ifaceStatus); err != nil {
+		log.Log.Error(err, "configSriovPFDevice(): fail to set eswitch mode for device", "device", iface.PciAddress)
+		return err
 	}
-
+	err := s.private.addUdevRules(iface)
+	if err != nil {
+		log.Log.Error(err, "configSriovPFDevice(): fail to set add udev rules", "device", iface.PciAddress)
+		return err
+	}
+	err = s.private.createVFs(iface, ifaceStatus)
+	if err != nil {
+		log.Log.Error(err, "configSriovPFDevice(): fail to set NumVfs for device", "device", iface.PciAddress)
+		errRemove := s.private.removeUdevRules(iface.PciAddress)
+		if errRemove != nil {
+			log.Log.Error(errRemove, "configSriovPFDevice(): fail to remove udev rule", "device", iface.PciAddress)
+		}
+		return err
+	}
 	// set PF mtu
 	if iface.Mtu > 0 && iface.Mtu > ifaceStatus.Mtu {
-		if iface.ExternallyManaged {
-			err := fmt.Errorf("ConfigSriovDevice(): requested MTU(%d) is greater than configured MTU(%d) for device %s. cannot change MTU as policy is configured as ExternallyManaged",
-				iface.Mtu, ifaceStatus.Mtu, iface.PciAddress)
-			log.Log.Error(nil, err.Error())
-			return err
-		}
 		err = s.networkHelper.SetNetdevMTU(iface.PciAddress, iface.Mtu)
 		if err != nil {
-			log.Log.Error(err, "configSriovDevice(): fail to set mtu for PF", "device", iface.PciAddress)
+			log.Log.Error(err, "configSriovPFDevice(): fail to set mtu for PF", "device", iface.PciAddress)
 			return err
 		}
 	}
-	// Config VFs
+	return nil
+}
+
+func (s *sriov) checkExternallyManagedPF(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt) error {
+	log.Log.V(2).Info("checkExternallyManagedPF(): configure PF sriov device",
+		"device", iface.PciAddress)
+	if iface.NumVfs > ifaceStatus.NumVfs {
+		errMsg := fmt.Sprintf("checkExternallyManagedPF(): number of request virtual functions %d is not equal to configured virtual "+
+			"functions %d but the policy is configured as ExternallyManaged for device %s",
+			iface.NumVfs, ifaceStatus.NumVfs, iface.PciAddress)
+		log.Log.Error(nil, errMsg)
+		return fmt.Errorf(errMsg)
+	}
+	if sriovnetworkv1.NeedToUpdateInterfaceEswitchMode(iface, ifaceStatus) {
+		errMsg := fmt.Sprintf("checkExternallyManagedPF(): requested ESwitchMode mode \"%s\" is not equal to configured \"%s\" "+
+			"but the policy is configured as ExternallyManaged for device %s",
+			sriovnetworkv1.GetEswitchModeFromSpec(iface), sriovnetworkv1.GetEswitchModeFromStatus(ifaceStatus), iface.PciAddress)
+		log.Log.Error(nil, errMsg)
+		return fmt.Errorf(errMsg)
+	}
+	if iface.Mtu > 0 && iface.Mtu > ifaceStatus.Mtu {
+		err := fmt.Errorf("checkExternallyManagedPF(): requested MTU(%d) is greater than configured MTU(%d) for device %s. cannot change MTU as policy is configured as ExternallyManaged",
+			iface.Mtu, ifaceStatus.Mtu, iface.PciAddress)
+		log.Log.Error(nil, err.Error())
+		return err
+	}
+	return nil
+}
+
+func (s *sriov) configSriovVFDevices(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt) error {
+	log.Log.V(2).Info("configSriovVFDevices(): configure PF sriov device",
+		"device", iface.PciAddress)
 	if iface.NumVfs > 0 {
 		vfAddrs, err := s.dputilsLib.GetVFList(iface.PciAddress)
 		if err != nil {
-			log.Log.Error(err, "configSriovDevice(): unable to parse VFs for device", "device", iface.PciAddress)
+			log.Log.Error(err, "configSriovVFDevices(): unable to parse VFs for device", "device", iface.PciAddress)
 		}
 		pfLink, err := s.netlinkLib.LinkByName(iface.Name)
 		if err != nil {
-			log.Log.Error(err, "configSriovDevice(): unable to get PF link for device", "device", iface)
+			log.Log.Error(err, "configSriovVFDevices(): unable to get PF link for device", "device", iface)
 			return err
 		}
 
@@ -393,7 +400,7 @@ func (s *sriov) ConfigSriovDevice(iface *sriovnetworkv1.Interface, ifaceStatus *
 
 			vfID, err := s.dputilsLib.GetVFID(addr)
 			if err != nil {
-				log.Log.Error(err, "configSriovDevice(): unable to get VF id", "device", iface.PciAddress)
+				log.Log.Error(err, "configSriovVFDevices(): unable to get VF id", "device", iface.PciAddress)
 				return err
 			}
 
@@ -426,22 +433,22 @@ func (s *sriov) ConfigSriovDevice(iface *sriovnetworkv1.Interface, ifaceStatus *
 				} else {
 					vfLink, err := s.sriovHelper.VFIsReady(addr)
 					if err != nil {
-						log.Log.Error(err, "configSriovDevice(): VF link is not ready", "address", addr)
+						log.Log.Error(err, "configSriovVFDevices(): VF link is not ready", "address", addr)
 						err = s.kernelHelper.RebindVfToDefaultDriver(addr)
 						if err != nil {
-							log.Log.Error(err, "configSriovDevice(): failed to rebind VF", "address", addr)
+							log.Log.Error(err, "configSriovVFDevices(): failed to rebind VF", "address", addr)
 							return err
 						}
 
 						// Try to check the VF status again
 						vfLink, err = s.sriovHelper.VFIsReady(addr)
 						if err != nil {
-							log.Log.Error(err, "configSriovDevice(): VF link is not ready", "address", addr)
+							log.Log.Error(err, "configSriovVFDevices(): VF link is not ready", "address", addr)
 							return err
 						}
 					}
 					if err = s.sriovHelper.SetVfAdminMac(addr, pfLink, vfLink); err != nil {
-						log.Log.Error(err, "configSriovDevice(): fail to configure VF admin mac", "device", addr)
+						log.Log.Error(err, "configSriovVFDevices(): fail to configure VF admin mac", "device", addr)
 						return err
 					}
 				}
@@ -451,40 +458,66 @@ func (s *sriov) ConfigSriovDevice(iface *sriovnetworkv1.Interface, ifaceStatus *
 				return err
 			}
 
-			if expectedEswitchMode == sriovnetworkv1.ESwithModeSwitchDev && group.VdpaType == "" {
+			if sriovnetworkv1.GetEswitchModeFromSpec(iface) == sriovnetworkv1.ESwithModeSwitchDev && group.VdpaType == "" {
 				if err := s.vdpaHelper.DeleteVDPADevice(addr); err != nil {
-					log.Log.Error(err, "configureVDPADevice(): fail to delete VDPA device",
+					log.Log.Error(err, "configSriovVFDevices(): fail to delete VDPA device",
 						"device", addr)
 					return err
 				}
 			}
 			if !sriovnetworkv1.StringInArray(group.DeviceType, vars.DpdkDrivers) {
 				if err := s.kernelHelper.BindDefaultDriver(addr); err != nil {
-					log.Log.Error(err, "configSriovDevice(): fail to bind default driver for device", "device", addr)
+					log.Log.Error(err, "configSriovVFDevices(): fail to bind default driver for device", "device", addr)
 					return err
 				}
 				// only set MTU for VF with default driver
 				if group.Mtu > 0 {
 					if err := s.networkHelper.SetNetdevMTU(addr, group.Mtu); err != nil {
-						log.Log.Error(err, "configSriovDevice(): fail to set mtu for VF", "address", addr)
+						log.Log.Error(err, "configSriovVFDevices(): fail to set mtu for VF", "address", addr)
 						return err
 					}
 				}
-				if expectedEswitchMode == sriovnetworkv1.ESwithModeSwitchDev && group.VdpaType != "" {
+				if sriovnetworkv1.GetEswitchModeFromSpec(iface) == sriovnetworkv1.ESwithModeSwitchDev && group.VdpaType != "" {
 					if err := s.vdpaHelper.CreateVDPADevice(addr, group.VdpaType); err != nil {
-						log.Log.Error(err, "configureVDPADevice(): fail to create VDPA device",
+						log.Log.Error(err, "configSriovVFDevices(): fail to create VDPA device",
 							"vdpaType", group.VdpaType, "device", addr)
 						return err
 					}
 				}
 			} else {
 				if err := s.kernelHelper.BindDpdkDriver(addr, group.DeviceType); err != nil {
-					log.Log.Error(err, "configSriovDevice(): fail to bind driver for device",
+					log.Log.Error(err, "configSriovVFDevices(): fail to bind driver for device",
 						"driver", group.DeviceType, "device", addr)
 					return err
 				}
 			}
 		}
+	}
+	return nil
+}
+
+func (s *sriov) ConfigSriovDevice(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt, preConfig bool) error {
+	log.Log.V(2).Info("ConfigSriovDevice(): configure sriov device",
+		"device", iface.PciAddress, "config", iface, "preConfig", preConfig)
+	if !iface.ExternallyManaged {
+		if err := s.private.configSriovPFDevice(iface, ifaceStatus); err != nil {
+			return err
+		}
+	}
+	if preConfig {
+		log.Log.V(2).Info("ConfigSriovDevice(): preConfig is true, unbind all VFs from drivers",
+			"device", iface.PciAddress)
+		return s.private.unbindAllVFsOnPF(iface.PciAddress)
+	}
+	// we don't need to validate externally managed PFs during preConfig stage because
+	// PFs may not be configured at this stage yet (preConfig stage is executed before NetworkManager, netplan)
+	if iface.ExternallyManaged {
+		if err := s.private.checkExternallyManagedPF(iface, ifaceStatus); err != nil {
+			return err
+		}
+	}
+	if err := s.private.configSriovVFDevices(iface, ifaceStatus); err != nil {
+		return err
 	}
 	// Set PF link up
 	pfLink, err := s.netlinkLib.LinkByName(ifaceStatus.Name)
@@ -501,7 +534,7 @@ func (s *sriov) ConfigSriovDevice(iface *sriovnetworkv1.Interface, ifaceStatus *
 }
 
 func (s *sriov) ConfigSriovInterfaces(storeManager store.ManagerInterface,
-	interfaces []sriovnetworkv1.Interface, ifaceStatuses []sriovnetworkv1.InterfaceExt, pfsToConfig map[string]bool) error {
+	interfaces []sriovnetworkv1.Interface, ifaceStatuses []sriovnetworkv1.InterfaceExt, pfsToConfig map[string]bool, preConfig bool) error {
 	if s.kernelHelper.IsKernelLockdownMode() && mlx.HasMellanoxInterfacesInSpec(ifaceStatuses, interfaces) {
 		log.Log.Error(nil, "cannot use mellanox devices when in kernel lockdown mode")
 		return fmt.Errorf("cannot use mellanox devices when in kernel lockdown mode")
@@ -529,7 +562,7 @@ func (s *sriov) ConfigSriovInterfaces(storeManager store.ManagerInterface,
 
 					break
 				}
-				if err := s.sriovHelper.ConfigSriovDevice(&iface, &ifaceStatus); err != nil {
+				if err := s.sriovHelper.ConfigSriovDevice(&iface, &ifaceStatus, preConfig); err != nil {
 					log.Log.Error(err, "SyncNodeState(): fail to configure sriov interface. resetting interface.", "address", iface.PciAddress)
 					if iface.ExternallyManaged {
 						log.Log.Info("SyncNodeState(): skipping device reset as the nic is marked as externally created")
