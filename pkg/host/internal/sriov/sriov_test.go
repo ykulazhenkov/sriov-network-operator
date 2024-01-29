@@ -169,53 +169,6 @@ var _ = Describe("SRIOV", func() {
 				Expect(s.removeUdevRules("0000:d8:00.0")).To(MatchError(testError))
 			})
 		})
-		Context("configureESwitchMode", func() {
-			It("already configured", func() {
-				Expect(s.configureESwitchMode(
-					&sriovnetworkv1.Interface{
-						PciAddress:  "0000:d8:00.0",
-						EswitchMode: "switchdev"},
-					&sriovnetworkv1.InterfaceExt{
-						PciAddress:  "0000:d8:00.0",
-						EswitchMode: "switchdev",
-					})).NotTo(HaveOccurred())
-			})
-			It("configure", func() {
-				sriovPrivateMock.EXPECT().unbindAllVFsOnPF("0000:d8:00.0").Return(nil)
-				hostMock.EXPECT().SetNicSriovMode("0000:d8:00.0", "switchdev").Return(nil)
-				Expect(s.configureESwitchMode(
-					&sriovnetworkv1.Interface{
-						PciAddress:  "0000:d8:00.0",
-						EswitchMode: "switchdev"},
-					&sriovnetworkv1.InterfaceExt{
-						PciAddress:  "0000:d8:00.0",
-						EswitchMode: "legacy",
-					})).NotTo(HaveOccurred())
-			})
-			It("fail - can't unbind VFs", func() {
-				sriovPrivateMock.EXPECT().unbindAllVFsOnPF("0000:d8:00.0").Return(testError)
-				Expect(s.configureESwitchMode(
-					&sriovnetworkv1.Interface{
-						PciAddress:  "0000:d8:00.0",
-						EswitchMode: "switchdev"},
-					&sriovnetworkv1.InterfaceExt{
-						PciAddress:  "0000:d8:00.0",
-						EswitchMode: "legacy",
-					})).To(MatchError(testError))
-			})
-			It("fail - can't switch mode", func() {
-				sriovPrivateMock.EXPECT().unbindAllVFsOnPF("0000:d8:00.0").Return(nil)
-				hostMock.EXPECT().SetNicSriovMode("0000:d8:00.0", "switchdev").Return(testError)
-				Expect(s.configureESwitchMode(
-					&sriovnetworkv1.Interface{
-						PciAddress:  "0000:d8:00.0",
-						EswitchMode: "switchdev"},
-					&sriovnetworkv1.InterfaceExt{
-						PciAddress:  "0000:d8:00.0",
-						EswitchMode: "legacy",
-					})).To(HaveOccurred())
-			})
-		})
 		Context("createVFs", func() {
 			It("already configured", func() {
 				Expect(s.createVFs(
@@ -228,38 +181,70 @@ var _ = Describe("SRIOV", func() {
 						NumVfs:     5,
 					})).NotTo(HaveOccurred())
 			})
-			It("create", func() {
+			It("legacy mode, created", func() {
+				sriovPrivateMock.EXPECT().unbindAllVFsOnPF("0000:d8:00.0").Return(nil)
+				hostMock.EXPECT().SetNicSriovMode("0000:d8:00.0", "legacy").Return(nil)
 				hostMock.EXPECT().SetSriovNumVfs("0000:d8:00.0", 5).Return(nil)
 				Expect(s.createVFs(
 					&sriovnetworkv1.Interface{
-						PciAddress: "0000:d8:00.0",
-						NumVfs:     5,
+						PciAddress:  "0000:d8:00.0",
+						NumVfs:      5,
+						EswitchMode: "legacy",
 					},
 					&sriovnetworkv1.InterfaceExt{
 						PciAddress: "0000:d8:00.0",
 						NumVfs:     0,
 					})).NotTo(HaveOccurred())
 			})
-			It("fail - legacy mode, fail to set num VFs", func() {
-				hostMock.EXPECT().SetSriovNumVfs("0000:d8:00.0", 5).Return(testError)
+			It("legacy mode, fail to unbind", func() {
+				sriovPrivateMock.EXPECT().unbindAllVFsOnPF("0000:d8:00.0").Return(testError)
 				Expect(s.createVFs(
 					&sriovnetworkv1.Interface{
-						PciAddress: "0000:d8:00.0",
-						NumVfs:     5,
+						PciAddress:  "0000:d8:00.0",
+						NumVfs:      5,
+						EswitchMode: "legacy",
 					},
 					&sriovnetworkv1.InterfaceExt{
 						PciAddress: "0000:d8:00.0",
 						NumVfs:     0,
 					})).To(HaveOccurred())
 			})
-			It("switchdev mode, can't create VFs, VFs created by switching to legacy mode", func() {
+			It("legacy mode, fail to set mode", func() {
+				sriovPrivateMock.EXPECT().unbindAllVFsOnPF("0000:d8:00.0").Return(nil)
+				hostMock.EXPECT().SetNicSriovMode("0000:d8:00.0", "legacy").Return(testError)
+				Expect(s.createVFs(
+					&sriovnetworkv1.Interface{
+						PciAddress:  "0000:d8:00.0",
+						NumVfs:      5,
+						EswitchMode: "legacy",
+					},
+					&sriovnetworkv1.InterfaceExt{
+						PciAddress: "0000:d8:00.0",
+						NumVfs:     0,
+					})).To(HaveOccurred())
+			})
+			It("legacy mode, fail to set numVfs", func() {
+				sriovPrivateMock.EXPECT().unbindAllVFsOnPF("0000:d8:00.0").Return(nil)
+				hostMock.EXPECT().SetNicSriovMode("0000:d8:00.0", "legacy").Return(nil)
+				hostMock.EXPECT().SetSriovNumVfs("0000:d8:00.0", 5).Return(testError)
+				Expect(s.createVFs(
+					&sriovnetworkv1.Interface{
+						PciAddress:  "0000:d8:00.0",
+						NumVfs:      5,
+						EswitchMode: "legacy",
+					},
+					&sriovnetworkv1.InterfaceExt{
+						PciAddress: "0000:d8:00.0",
+						NumVfs:     0,
+					})).To(HaveOccurred())
+			})
+			It("switchdev mode, created", func() {
 				iface := &sriovnetworkv1.Interface{
 					PciAddress:  "0000:d8:00.0",
 					NumVfs:      5,
 					EswitchMode: "switchdev",
 				}
-				hostMock.EXPECT().SetSriovNumVfs("0000:d8:00.0", 5).Return(testError)
-				sriovPrivateMock.EXPECT().createSwitchdevVFsBySwitchingToLegacy(iface).Return(nil)
+				sriovPrivateMock.EXPECT().createSwitchdevVFs(iface).Return(nil)
 				Expect(s.createVFs(
 					iface,
 					&sriovnetworkv1.InterfaceExt{
@@ -268,14 +253,13 @@ var _ = Describe("SRIOV", func() {
 						EswitchMode: "switchdev",
 					})).NotTo(HaveOccurred())
 			})
-			It("switchdev mode, can't create VFs", func() {
+			It("switchdev mode, fail to create", func() {
 				iface := &sriovnetworkv1.Interface{
 					PciAddress:  "0000:d8:00.0",
 					NumVfs:      5,
 					EswitchMode: "switchdev",
 				}
-				hostMock.EXPECT().SetSriovNumVfs("0000:d8:00.0", 5).Return(testError)
-				sriovPrivateMock.EXPECT().createSwitchdevVFsBySwitchingToLegacy(iface).Return(testError)
+				sriovPrivateMock.EXPECT().createSwitchdevVFs(iface).Return(testError)
 				Expect(s.createVFs(
 					iface,
 					&sriovnetworkv1.InterfaceExt{
@@ -285,13 +269,13 @@ var _ = Describe("SRIOV", func() {
 					})).To(HaveOccurred())
 			})
 		})
-		Context("createSwitchdevVFsBySwitchingToLegacy", func() {
+		Context("createSwitchdevVFs", func() {
 			It("created", func() {
 				sriovPrivateMock.EXPECT().unbindAllVFsOnPF("0000:d8:00.0").Return(nil).Times(2)
 				hostMock.EXPECT().SetNicSriovMode("0000:d8:00.0", "legacy").Return(nil)
 				hostMock.EXPECT().SetSriovNumVfs("0000:d8:00.0", 5).Return(nil)
 				hostMock.EXPECT().SetNicSriovMode("0000:d8:00.0", "switchdev").Return(nil)
-				Expect(s.createSwitchdevVFsBySwitchingToLegacy(&sriovnetworkv1.Interface{
+				Expect(s.createSwitchdevVFs(&sriovnetworkv1.Interface{
 					PciAddress:  "0000:d8:00.0",
 					NumVfs:      5,
 					EswitchMode: "switchdev",
@@ -299,7 +283,7 @@ var _ = Describe("SRIOV", func() {
 			})
 			It("fail - can't unbind VFs", func() {
 				sriovPrivateMock.EXPECT().unbindAllVFsOnPF("0000:d8:00.0").Return(testError)
-				Expect(s.createSwitchdevVFsBySwitchingToLegacy(&sriovnetworkv1.Interface{
+				Expect(s.createSwitchdevVFs(&sriovnetworkv1.Interface{
 					PciAddress:  "0000:d8:00.0",
 					NumVfs:      5,
 					EswitchMode: "switchdev",
@@ -308,7 +292,7 @@ var _ = Describe("SRIOV", func() {
 			It("fail - can't switch to legacy mode", func() {
 				sriovPrivateMock.EXPECT().unbindAllVFsOnPF("0000:d8:00.0").Return(nil)
 				hostMock.EXPECT().SetNicSriovMode("0000:d8:00.0", "legacy").Return(testError)
-				Expect(s.createSwitchdevVFsBySwitchingToLegacy(&sriovnetworkv1.Interface{
+				Expect(s.createSwitchdevVFs(&sriovnetworkv1.Interface{
 					PciAddress:  "0000:d8:00.0",
 					NumVfs:      5,
 					EswitchMode: "switchdev",
@@ -318,7 +302,7 @@ var _ = Describe("SRIOV", func() {
 				sriovPrivateMock.EXPECT().unbindAllVFsOnPF("0000:d8:00.0").Return(nil)
 				hostMock.EXPECT().SetNicSriovMode("0000:d8:00.0", "legacy").Return(nil)
 				hostMock.EXPECT().SetSriovNumVfs("0000:d8:00.0", 5).Return(testError)
-				Expect(s.createSwitchdevVFsBySwitchingToLegacy(&sriovnetworkv1.Interface{
+				Expect(s.createSwitchdevVFs(&sriovnetworkv1.Interface{
 					PciAddress:  "0000:d8:00.0",
 					NumVfs:      5,
 					EswitchMode: "switchdev",
@@ -329,7 +313,7 @@ var _ = Describe("SRIOV", func() {
 				hostMock.EXPECT().SetNicSriovMode("0000:d8:00.0", "legacy").Return(nil)
 				hostMock.EXPECT().SetSriovNumVfs("0000:d8:00.0", 5).Return(nil)
 				sriovPrivateMock.EXPECT().unbindAllVFsOnPF("0000:d8:00.0").Return(testError)
-				Expect(s.createSwitchdevVFsBySwitchingToLegacy(&sriovnetworkv1.Interface{
+				Expect(s.createSwitchdevVFs(&sriovnetworkv1.Interface{
 					PciAddress:  "0000:d8:00.0",
 					NumVfs:      5,
 					EswitchMode: "switchdev",
@@ -340,7 +324,7 @@ var _ = Describe("SRIOV", func() {
 				hostMock.EXPECT().SetNicSriovMode("0000:d8:00.0", "legacy").Return(nil)
 				hostMock.EXPECT().SetSriovNumVfs("0000:d8:00.0", 5).Return(nil)
 				hostMock.EXPECT().SetNicSriovMode("0000:d8:00.0", "switchdev").Return(testError)
-				Expect(s.createSwitchdevVFsBySwitchingToLegacy(&sriovnetworkv1.Interface{
+				Expect(s.createSwitchdevVFs(&sriovnetworkv1.Interface{
 					PciAddress:  "0000:d8:00.0",
 					NumVfs:      5,
 					EswitchMode: "switchdev",

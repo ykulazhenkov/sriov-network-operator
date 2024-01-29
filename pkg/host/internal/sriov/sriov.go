@@ -45,13 +45,12 @@ type sriov struct {
 type sriovPrivateInterface interface {
 	addUdevRules(iface *sriovnetworkv1.Interface) error
 	removeUdevRules(pciAddress string) error
-	configureESwitchMode(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt) error
 	createVFs(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt) error
-	createSwitchdevVFsBySwitchingToLegacy(iface *sriovnetworkv1.Interface) error
+	createSwitchdevVFs(iface *sriovnetworkv1.Interface) error
 	unbindAllVFsOnPF(addr string) error
 	configSriovPFDevice(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt) error
-	checkExternallyManagedPF(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt) error
 	configSriovVFDevices(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt) error
+	checkExternallyManagedPF(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt) error
 }
 
 func New(utilsHelper utils.CmdInterface,
@@ -324,10 +323,6 @@ func (s *sriov) configSriovPFDevice(iface *sriovnetworkv1.Interface, ifaceStatus
 	if iface.NumVfs > ifaceStatus.TotalVfs {
 		err := fmt.Errorf("cannot config SRIOV device: NumVfs (%d) is larger than TotalVfs (%d)", iface.NumVfs, ifaceStatus.TotalVfs)
 		log.Log.Error(err, "configSriovPFDevice(): fail to set NumVfs for device", "device", iface.PciAddress)
-		return err
-	}
-	if err := s.private.configureESwitchMode(iface, ifaceStatus); err != nil {
-		log.Log.Error(err, "configSriovPFDevice(): fail to set eswitch mode for device", "device", iface.PciAddress)
 		return err
 	}
 	err := s.private.addUdevRules(iface)
@@ -748,60 +743,42 @@ func (s *sriov) removeUdevRules(pciAddress string) error {
 	return s.udevHelper.RemoveVfRepresentorUdevRule(pciAddress)
 }
 
-// configure ESwitchMode for the PF
-// does nothing if mode is already set.
-// unbinds all VFs on the PF before changing the mode
-func (s *sriov) configureESwitchMode(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt) error {
-	log.Log.V(2).Info("configureESwitchMode(): configure eswitch mode for device",
-		"device", iface.PciAddress)
-	expectedMode := sriovnetworkv1.GetEswitchModeFromSpec(iface)
-	if !sriovnetworkv1.NeedToUpdateInterfaceEswitchMode(iface, ifaceStatus) {
-		log.Log.V(2).Info("configureESwitchMode(): device is already configured",
-			"device", iface.PciAddress, "mode", expectedMode)
+func (s *sriov) createVFs(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt) error {
+	expectedEswitchMode := sriovnetworkv1.GetEswitchModeFromSpec(iface)
+	log.Log.V(2).Info("createVFs(): configure VFs for device",
+		"device", iface.PciAddress, "count", iface.NumVfs, "mode", expectedEswitchMode)
+
+	if iface.NumVfs == ifaceStatus.NumVfs && !sriovnetworkv1.NeedToUpdateInterfaceEswitchMode(iface, ifaceStatus) {
+		log.Log.V(2).Info("createVFs(): device is already configured",
+			"device", iface.PciAddress, "count", iface.NumVfs, "mode", expectedEswitchMode)
 		return nil
+	}
+	if expectedEswitchMode == sriovnetworkv1.ESwithModeSwitchDev {
+		return s.private.createSwitchdevVFs(iface)
 	}
 	if err := s.private.unbindAllVFsOnPF(iface.PciAddress); err != nil {
 		return err
 	}
-	if err := s.sriovHelper.SetNicSriovMode(iface.PciAddress, expectedMode); err != nil {
-		return fmt.Errorf("failed to switch NIC to SRIOV %s mode: %v", expectedMode, err)
+	if err := s.sriovHelper.SetNicSriovMode(iface.PciAddress, expectedEswitchMode); err != nil {
+		return fmt.Errorf("failed to switch NIC to SRIOV %s mode: %v", expectedEswitchMode, err)
 	}
-	return nil
-}
-
-// create VFs on the PF
-func (s *sriov) createVFs(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt) error {
-	log.Log.V(2).Info("createVFs(): configure VFs for device",
-		"device", iface.PciAddress, "count", iface.NumVfs)
-	if iface.NumVfs == ifaceStatus.NumVfs {
-		log.Log.V(2).Info("createVFs(): device is already configured",
-			"device", iface.PciAddress, "count", iface.NumVfs)
-		return nil
-	}
-	err := s.sriovHelper.SetSriovNumVfs(iface.PciAddress, iface.NumVfs)
-	if err == nil {
-		return nil
-	}
-	log.Log.Error(err, "createVFs(): failed to configure NumVFs", "device", iface.PciAddress)
-	if iface.EswitchMode == sriovnetworkv1.ESwithModeSwitchDev {
-		log.Log.Info("createVFs(): failed to create VFs in switchdev mode, try to configure VFs by switching to legacy mode")
-		return s.private.createSwitchdevVFsBySwitchingToLegacy(iface)
-	}
-	return fmt.Errorf("failed to configure NumVFs: %v", err)
+	return s.sriovHelper.SetSriovNumVfs(iface.PciAddress, iface.NumVfs)
 }
 
 // some drivers may not support VF creation in switchdev mode,
-// try to switch NIC to legacy mode first, then create VFs and after switch then NIC
-// back to switchdev mode
-func (s *sriov) createSwitchdevVFsBySwitchingToLegacy(iface *sriovnetworkv1.Interface) error {
-	log.Log.V(2).Info("createSwitchdevVFsBySwitchingToLegacy(): configure VFs for device",
+// try to switch NIC to the legacy mode first, then create VFs and after that switch the NIC
+// back to the switchdev mode
+func (s *sriov) createSwitchdevVFs(iface *sriovnetworkv1.Interface) error {
+	log.Log.V(2).Info("createSwitchdevVFs(): configure VFs for device",
 		"device", iface.PciAddress, "count", iface.NumVfs)
+
 	if err := s.private.unbindAllVFsOnPF(iface.PciAddress); err != nil {
 		return err
 	}
 	if err := s.sriovHelper.SetNicSriovMode(iface.PciAddress, sriovnetworkv1.ESwithModeLegacy); err != nil {
 		return fmt.Errorf("failed to switch NIC to SRIOV legacy mode: %v", err)
 	}
+
 	if err := s.sriovHelper.SetSriovNumVfs(iface.PciAddress, iface.NumVfs); err != nil {
 		return err
 	}

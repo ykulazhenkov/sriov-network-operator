@@ -90,32 +90,18 @@ func (mr *MocksriovPrivateInterfaceMockRecorder) configSriovVFDevices(iface, ifa
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "configSriovVFDevices", reflect.TypeOf((*MocksriovPrivateInterface)(nil).configSriovVFDevices), iface, ifaceStatus)
 }
 
-// configureESwitchMode mocks base method.
-func (m *MocksriovPrivateInterface) configureESwitchMode(iface *v1.Interface, ifaceStatus *v1.InterfaceExt) error {
+// createSwitchdevVFs mocks base method.
+func (m *MocksriovPrivateInterface) createSwitchdevVFs(iface *v1.Interface) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "configureESwitchMode", iface, ifaceStatus)
+	ret := m.ctrl.Call(m, "createSwitchdevVFs", iface)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// configureESwitchMode indicates an expected call of configureESwitchMode.
-func (mr *MocksriovPrivateInterfaceMockRecorder) configureESwitchMode(iface, ifaceStatus interface{}) *gomock.Call {
+// createSwitchdevVFs indicates an expected call of createSwitchdevVFs.
+func (mr *MocksriovPrivateInterfaceMockRecorder) createSwitchdevVFs(iface interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "configureESwitchMode", reflect.TypeOf((*MocksriovPrivateInterface)(nil).configureESwitchMode), iface, ifaceStatus)
-}
-
-// createSwitchdevVFsBySwitchingToLegacy mocks base method.
-func (m *MocksriovPrivateInterface) createSwitchdevVFsBySwitchingToLegacy(iface *v1.Interface) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "createSwitchdevVFsBySwitchingToLegacy", iface)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// createSwitchdevVFsBySwitchingToLegacy indicates an expected call of createSwitchdevVFsBySwitchingToLegacy.
-func (mr *MocksriovPrivateInterfaceMockRecorder) createSwitchdevVFsBySwitchingToLegacy(iface interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "createSwitchdevVFsBySwitchingToLegacy", reflect.TypeOf((*MocksriovPrivateInterface)(nil).createSwitchdevVFsBySwitchingToLegacy), iface)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "createSwitchdevVFs", reflect.TypeOf((*MocksriovPrivateInterface)(nil).createSwitchdevVFs), iface)
 }
 
 // createVFs mocks base method.
