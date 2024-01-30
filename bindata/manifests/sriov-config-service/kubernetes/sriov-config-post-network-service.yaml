@@ -7,7 +7,7 @@ contents: |
   [Service]
   Type=oneshot
   # TODO replace with service call
-  ExecStart=/bin/true
+  ExecStart=/var/lib/sriov/sriov-network-config-daemon -v 2 service -p post
   StandardOutput=journal+console
 
   [Install]

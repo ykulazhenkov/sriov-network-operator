@@ -21,7 +21,7 @@ spec:
 
             [Service]
             Type=oneshot
-            ExecStart=/var/lib/sriov/sriov-network-config-daemon service -v {{ .LogLevel }}
+            ExecStart=/var/lib/sriov/sriov-network-config-daemon service -v {{ .LogLevel }} -p pre
             StandardOutput=journal+console
 
             [Install]
@@ -39,7 +39,7 @@ spec:
             [Service]
             Type=oneshot
             # TODO replace with service call
-            ExecStart=/bin/true
+            ExecStart=/var/lib/sriov/sriov-network-config-daemon service -v {{ .LogLevel }} -p post
             StandardOutput=journal+console
 
             [Install]
