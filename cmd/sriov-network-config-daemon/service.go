@@ -54,12 +54,11 @@ var (
 
 func init() {
 	rootCmd.AddCommand(serviceCmd)
-	serviceCmd.Flags().StringVarP(&phase, "phase", "p", "", fmt.Sprintf("configuration phase, supported values are: %s, %s", PhasePre, PhasePost))
+	serviceCmd.Flags().StringVarP(&phase, "phase", "p", PhasePre, fmt.Sprintf("configuration phase, supported values are: %s, %s", PhasePre, PhasePost))
 }
 
-// The service has required argument "phase"
-// Two phases are supported now:
-// * pre - before the NetworkManager or systemd-networkd
+// The service supports two configuration phases:
+// * pre(default) - before the NetworkManager or systemd-networkd
 // * post - after the NetworkManager or systemd-networkd
 // "sriov-config" systemd unit is responsible for starting the service in the "pre" phase mode.
 // "sriov-config-post-network" systemd unit starts the service in the "post" phase mode.
@@ -70,7 +69,7 @@ func init() {
 // and the execution result will be forcefully set to "Failed".
 func runServiceCmd(cmd *cobra.Command, args []string) error {
 	if phase != PhasePre && phase != PhasePost {
-		return fmt.Errorf("invalid value for required argument \"--phase\", valid values are: %s, %s", PhasePre, PhasePost)
+		return fmt.Errorf("invalid value for \"--phase\" argument, valid values are: %s, %s", PhasePre, PhasePost)
 	}
 	// init logger
 	snolog.InitLog()
