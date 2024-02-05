@@ -117,6 +117,7 @@ func (s *sriov) GetVfInfo(pciAddr string, devices []*ghw.PCIDevice) sriovnetwork
 		PciAddress: pciAddr,
 		Driver:     driver,
 		VfID:       id,
+		VdpaType:   s.vdpaHelper.DiscoverVDPAType(pciAddr),
 	}
 
 	if mtu := s.networkHelper.GetNetdevMTU(pciAddr); mtu > 0 {
