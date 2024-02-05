@@ -1,15 +1,11 @@
 package k8s
 
 import (
-	"fmt"
-	"os"
-	"path"
 	"strings"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	sriovnetworkv1 "github.com/k8snetworkplumbingwg/sriov-network-operator/api/v1"
-	"github.com/k8snetworkplumbingwg/sriov-network-operator/pkg/consts"
 	"github.com/k8snetworkplumbingwg/sriov-network-operator/pkg/helper"
 	hostTypes "github.com/k8snetworkplumbingwg/sriov-network-operator/pkg/host/types"
 	plugins "github.com/k8snetworkplumbingwg/sriov-network-operator/pkg/plugins"
@@ -19,59 +15,34 @@ import (
 var PluginName = "k8s"
 
 type K8sPlugin struct {
-	PluginName                 string
-	SpecVersion                string
-	switchdevBeforeNMRunScript *hostTypes.ScriptManifestFile
-	switchdevAfterNMRunScript  *hostTypes.ScriptManifestFile
-	switchdevUdevScript        *hostTypes.ScriptManifestFile
-	switchdevBeforeNMService   *hostTypes.Service
-	switchdevAfterNMService    *hostTypes.Service
-	openVSwitchService         *hostTypes.Service
-	networkManagerService      *hostTypes.Service
-	sriovService               *hostTypes.Service
-	sriovPostNetworkService    *hostTypes.Service
-	updateTarget               *k8sUpdateTarget
-	hostHelper                 helper.HostHelpersInterface
+	PluginName  string
+	SpecVersion string
+	hostHelper  helper.HostHelpersInterface
+
+	openVSwitchService      *hostTypes.Service
+	sriovService            *hostTypes.Service
+	sriovPostNetworkService *hostTypes.Service
+
+	updateTarget *k8sUpdateTarget
 }
 
 type k8sUpdateTarget struct {
-	switchdevBeforeNMService   bool
-	switchdevAfterNMService    bool
-	switchdevBeforeNMRunScript bool
-	switchdevAfterNMRunScript  bool
-	switchdevUdevScript        bool
-	sriovScript                bool
-	sriovPostNetworkScript     bool
-	systemServices             []*hostTypes.Service
+	sriovScript            bool
+	sriovPostNetworkScript bool
+	systemServices         []*hostTypes.Service
 }
 
 func (u *k8sUpdateTarget) needUpdate() bool {
-	return u.switchdevBeforeNMService ||
-		u.switchdevAfterNMService ||
-		u.switchdevBeforeNMRunScript ||
-		u.switchdevAfterNMRunScript ||
-		u.switchdevUdevScript ||
-		u.sriovScript ||
+	return u.sriovScript ||
 		u.sriovPostNetworkScript ||
 		len(u.systemServices) > 0
 }
 
 func (u *k8sUpdateTarget) needReboot() bool {
-	return u.switchdevBeforeNMService ||
-		u.switchdevAfterNMService ||
-		u.switchdevBeforeNMRunScript ||
-		u.switchdevAfterNMRunScript ||
-		u.switchdevUdevScript ||
-		u.sriovScript ||
-		u.sriovPostNetworkScript
+	return u.sriovScript || u.sriovPostNetworkScript
 }
 
 func (u *k8sUpdateTarget) reset() {
-	u.switchdevBeforeNMService = false
-	u.switchdevAfterNMService = false
-	u.switchdevBeforeNMRunScript = false
-	u.switchdevAfterNMRunScript = false
-	u.switchdevUdevScript = false
 	u.sriovScript = false
 	u.sriovPostNetworkScript = false
 	u.systemServices = []*hostTypes.Service{}
@@ -79,36 +50,26 @@ func (u *k8sUpdateTarget) reset() {
 
 func (u *k8sUpdateTarget) String() string {
 	var updateList []string
-	if u.switchdevBeforeNMService || u.switchdevAfterNMService {
-		updateList = append(updateList, "SwitchdevService")
+	if u.sriovScript {
+		updateList = append(updateList, "sriov-config.service")
 	}
-	if u.switchdevBeforeNMRunScript || u.switchdevAfterNMRunScript {
-		updateList = append(updateList, "SwitchdevRunScript")
-	}
-	if u.switchdevUdevScript {
-		updateList = append(updateList, "SwitchdevUdevScript")
+	if u.sriovPostNetworkScript {
+		updateList = append(updateList, "sriov-config-post-network.service")
 	}
 	for _, s := range u.systemServices {
 		updateList = append(updateList, s.Name)
 	}
-
 	return strings.Join(updateList, ",")
 }
 
 const (
-	bindataManifestPath               = "bindata/manifests/"
-	switchdevManifestPath             = bindataManifestPath + "switchdev-config/"
-	switchdevUnits                    = switchdevManifestPath + "switchdev-units/"
-	sriovUnits                        = bindataManifestPath + "sriov-config-service/kubernetes/"
-	sriovUnitFile                     = sriovUnits + "sriov-config-service.yaml"
-	sriovPostNetworkUnitFile          = sriovUnits + "sriov-config-post-network-service.yaml"
-	switchdevBeforeNMUnitFile         = switchdevUnits + "switchdev-configuration-before-nm.yaml"
-	switchdevAfterNMUnitFile          = switchdevUnits + "switchdev-configuration-after-nm.yaml"
-	networkManagerUnitFile            = switchdevUnits + "NetworkManager.service.yaml"
-	ovsUnitFile                       = switchdevManifestPath + "ovs-units/ovs-vswitchd.service.yaml"
-	configuresSwitchdevBeforeNMScript = switchdevManifestPath + "files/switchdev-configuration-before-nm.sh.yaml"
-	configuresSwitchdevAfterNMScript  = switchdevManifestPath + "files/switchdev-configuration-after-nm.sh.yaml"
-	switchdevRenamingUdevScript       = switchdevManifestPath + "files/switchdev-vf-link-name.sh.yaml"
+	bindataManifestPath      = "bindata/manifests/"
+	switchdevManifestPath    = bindataManifestPath + "switchdev-config/"
+	switchdevUnits           = switchdevManifestPath + "switchdev-units/"
+	sriovUnits               = bindataManifestPath + "sriov-config-service/kubernetes/"
+	sriovUnitFile            = sriovUnits + "sriov-config-service.yaml"
+	sriovPostNetworkUnitFile = sriovUnits + "sriov-config-post-network-service.yaml"
+	ovsUnitFile              = switchdevManifestPath + "ovs-units/ovs-vswitchd.service.yaml"
 )
 
 // Initialize our plugin and set up initial values
@@ -148,7 +109,7 @@ func (p *K8sPlugin) OnNodeStateChange(new *sriovnetworkv1.SriovNetworkNodeState)
 
 	if sriovnetworkv1.IsSwitchdevModeSpec(new.Spec) {
 		// Check services
-		err = p.switchDevServicesStateUpdate()
+		err = p.systemServicesStateUpdate()
 		if err != nil {
 			log.Log.Error(err, "k8s plugin OnNodeStateChange(): failed")
 			return
@@ -180,10 +141,6 @@ func (p *K8sPlugin) OnNodeStateChange(new *sriovnetworkv1.SriovNetworkNodeState)
 // Apply config change
 func (p *K8sPlugin) Apply() error {
 	log.Log.Info("k8s plugin Apply()")
-	if err := p.updateSwitchdevService(); err != nil {
-		return err
-	}
-
 	if vars.UsingSystemdMode {
 		if err := p.updateSriovServices(); err != nil {
 			return err
@@ -196,60 +153,6 @@ func (p *K8sPlugin) Apply() error {
 		}
 	}
 
-	return nil
-}
-
-func (p *K8sPlugin) readSwitchdevManifest() error {
-	// Read switchdev service
-	switchdevBeforeNMService, err := p.hostHelper.ReadServiceManifestFile(switchdevBeforeNMUnitFile)
-	if err != nil {
-		return err
-	}
-	switchdevAfterNMService, err := p.hostHelper.ReadServiceManifestFile(switchdevAfterNMUnitFile)
-	if err != nil {
-		return err
-	}
-
-	switchdevBeforeNMService, err = p.hostHelper.RemoveFromService(switchdevBeforeNMService, hostTypes.ConditionOpt)
-	if err != nil {
-		return err
-	}
-	switchdevAfterNMService, err = p.hostHelper.RemoveFromService(switchdevAfterNMService, hostTypes.ConditionOpt)
-	if err != nil {
-		return err
-	}
-	p.switchdevBeforeNMService = switchdevBeforeNMService
-	p.switchdevAfterNMService = switchdevAfterNMService
-
-	// Read switchdev run script
-	switchdevBeforeNMRunScript, err := p.hostHelper.ReadScriptManifestFile(configuresSwitchdevBeforeNMScript)
-	if err != nil {
-		return err
-	}
-	switchdevAfterNMRunScript, err := p.hostHelper.ReadScriptManifestFile(configuresSwitchdevAfterNMScript)
-	if err != nil {
-		return err
-	}
-	p.switchdevBeforeNMRunScript = switchdevBeforeNMRunScript
-	p.switchdevAfterNMRunScript = switchdevAfterNMRunScript
-
-	// Read switchdev udev script
-	switchdevUdevScript, err := p.hostHelper.ReadScriptManifestFile(switchdevRenamingUdevScript)
-	if err != nil {
-		return err
-	}
-	p.switchdevUdevScript = switchdevUdevScript
-
-	return nil
-}
-
-func (p *K8sPlugin) readNetworkManagerManifest() error {
-	networkManagerService, err := p.hostHelper.ReadServiceInjectionManifestFile(networkManagerUnitFile)
-	if err != nil {
-		return err
-	}
-
-	p.networkManagerService = networkManagerService
 	return nil
 }
 
@@ -284,14 +187,6 @@ func (p *K8sPlugin) readSriovPostNetworkServiceManifest() error {
 }
 
 func (p *K8sPlugin) readManifestFiles() error {
-	if err := p.readSwitchdevManifest(); err != nil {
-		return err
-	}
-
-	if err := p.readNetworkManagerManifest(); err != nil {
-		return err
-	}
-
 	if err := p.readOpenVSwitchdManifest(); err != nil {
 		return err
 	}
@@ -303,41 +198,6 @@ func (p *K8sPlugin) readManifestFiles() error {
 	if err := p.readSriovPostNetworkServiceManifest(); err != nil {
 		return err
 	}
-
-	return nil
-}
-
-func (p *K8sPlugin) switchdevServiceStateUpdate() error {
-	// Check switchdev service
-	needUpdate, err := p.isSwitchdevServiceNeedUpdate(p.switchdevBeforeNMService)
-	if err != nil {
-		return err
-	}
-	p.updateTarget.switchdevBeforeNMService = needUpdate
-	needUpdate, err = p.isSwitchdevServiceNeedUpdate(p.switchdevAfterNMService)
-	if err != nil {
-		return err
-	}
-	p.updateTarget.switchdevAfterNMService = needUpdate
-
-	// Check switchdev run script
-	needUpdate, err = p.isSwitchdevScriptNeedUpdate(p.switchdevBeforeNMRunScript)
-	if err != nil {
-		return err
-	}
-	p.updateTarget.switchdevBeforeNMRunScript = needUpdate
-	needUpdate, err = p.isSwitchdevScriptNeedUpdate(p.switchdevAfterNMRunScript)
-	if err != nil {
-		return err
-	}
-	p.updateTarget.switchdevAfterNMRunScript = needUpdate
-
-	// Check switchdev udev script
-	needUpdate, err = p.isSwitchdevScriptNeedUpdate(p.switchdevUdevScript)
-	if err != nil {
-		return err
-	}
-	p.updateTarget.switchdevUdevScript = needUpdate
 
 	return nil
 }
@@ -360,81 +220,26 @@ func (p *K8sPlugin) sriovServicesStateUpdate() error {
 		if !isServiceEnabled {
 			*s.update = true
 		} else {
-			*s.update = p.isSystemServiceNeedUpdate(s.srv)
-		}
-		if *s.update {
-			p.updateTarget.systemServices = append(p.updateTarget.systemServices, s.srv)
+			*s.update = p.isSystemDServiceNeedUpdate(s.srv)
 		}
 	}
 
 	return nil
 }
 
-func (p *K8sPlugin) getSwitchDevSystemServices() []*hostTypes.Service {
-	return []*hostTypes.Service{p.networkManagerService, p.openVSwitchService}
-}
-
-func (p *K8sPlugin) isSwitchdevScriptNeedUpdate(scriptObj *hostTypes.ScriptManifestFile) (needUpdate bool, err error) {
-	data, err := os.ReadFile(path.Join(consts.Host, scriptObj.Path))
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return false, err
-		}
-		return true, nil
-	} else if string(data) != scriptObj.Contents.Inline {
-		return true, nil
-	}
-	return false, nil
-}
-
-func (p *K8sPlugin) isSwitchdevServiceNeedUpdate(serviceObj *hostTypes.Service) (needUpdate bool, err error) {
-	swdService, err := p.hostHelper.ReadService(serviceObj.Path)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return false, err
-		}
-		// service not exists
-		return true, nil
-	} else {
-		needChange, err := p.hostHelper.CompareServices(swdService, serviceObj)
-		if err != nil {
-			return false, err
-		}
-		return needChange, nil
-	}
-}
-
-func (p *K8sPlugin) isSystemServiceNeedUpdate(serviceObj *hostTypes.Service) bool {
-	log.Log.Info("isSystemServiceNeedUpdate()")
-	systemService, err := p.hostHelper.ReadService(serviceObj.Path)
-	if err != nil {
-		log.Log.Error(err, "k8s plugin isSystemServiceNeedUpdate(): failed to read sriov-config service file, ignoring",
-			"path", serviceObj.Path)
-		return false
-	}
-	if systemService != nil {
-		needChange, err := p.hostHelper.CompareServices(systemService, serviceObj)
-		if err != nil {
-			log.Log.Error(err, "k8s plugin isSystemServiceNeedUpdate(): failed to compare sriov-config service, ignoring")
-			return false
-		}
-		return needChange
-	}
-
-	return false
-}
-
 func (p *K8sPlugin) systemServicesStateUpdate() error {
 	var services []*hostTypes.Service
-	for _, systemService := range p.getSwitchDevSystemServices() {
+	for _, systemService := range []*hostTypes.Service{p.openVSwitchService} {
 		exist, err := p.hostHelper.IsServiceExist(systemService.Path)
 		if err != nil {
 			return err
 		}
 		if !exist {
-			return fmt.Errorf("k8s plugin systemServicesStateUpdate(): %q not found", systemService.Name)
+			log.Log.Info("k8s plugin systemServicesStateUpdate(): WARNING! system service not found, skip update",
+				"service", p.openVSwitchService.Name)
+			return nil
 		}
-		if p.isSystemServiceNeedUpdate(systemService) {
+		if p.isSystemDServiceNeedUpdate(systemService) {
 			services = append(services, systemService)
 		}
 	}
@@ -443,20 +248,24 @@ func (p *K8sPlugin) systemServicesStateUpdate() error {
 	return nil
 }
 
-func (p *K8sPlugin) switchDevServicesStateUpdate() error {
-	// Check switchdev
-	err := p.switchdevServiceStateUpdate()
+func (p *K8sPlugin) isSystemDServiceNeedUpdate(serviceObj *hostTypes.Service) bool {
+	log.Log.Info("isSystemDServiceNeedUpdate()")
+	systemService, err := p.hostHelper.ReadService(serviceObj.Path)
 	if err != nil {
-		return err
+		log.Log.Error(err, "k8s plugin isSystemDServiceNeedUpdate(): failed to read service file, ignoring",
+			"path", serviceObj.Path)
+		return false
+	}
+	if systemService != nil {
+		needChange, err := p.hostHelper.CompareServices(systemService, serviceObj)
+		if err != nil {
+			log.Log.Error(err, "k8s plugin isSystemDServiceNeedUpdate(): failed to compare service, ignoring")
+			return false
+		}
+		return needChange
 	}
 
-	// Check system services
-	err = p.systemServicesStateUpdate()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return false
 }
 
 func (p *K8sPlugin) updateSriovServices() error {
@@ -472,48 +281,6 @@ func (p *K8sPlugin) updateSriovServices() error {
 			if err != nil {
 				return err
 			}
-		}
-	}
-
-	return nil
-}
-
-func (p *K8sPlugin) updateSwitchdevService() error {
-	if p.updateTarget.switchdevBeforeNMService {
-		err := p.hostHelper.EnableService(p.switchdevBeforeNMService)
-		if err != nil {
-			return err
-		}
-	}
-
-	if p.updateTarget.switchdevAfterNMService {
-		err := p.hostHelper.EnableService(p.switchdevAfterNMService)
-		if err != nil {
-			return err
-		}
-	}
-
-	if p.updateTarget.switchdevBeforeNMRunScript {
-		err := os.WriteFile(path.Join(consts.Host, p.switchdevBeforeNMRunScript.Path),
-			[]byte(p.switchdevBeforeNMRunScript.Contents.Inline), 0755)
-		if err != nil {
-			return err
-		}
-	}
-
-	if p.updateTarget.switchdevAfterNMRunScript {
-		err := os.WriteFile(path.Join(consts.Host, p.switchdevAfterNMRunScript.Path),
-			[]byte(p.switchdevAfterNMRunScript.Contents.Inline), 0755)
-		if err != nil {
-			return err
-		}
-	}
-
-	if p.updateTarget.switchdevUdevScript {
-		err := os.WriteFile(path.Join(consts.Host, p.switchdevUdevScript.Path),
-			[]byte(p.switchdevUdevScript.Contents.Inline), 0755)
-		if err != nil {
-			return err
 		}
 	}
 
