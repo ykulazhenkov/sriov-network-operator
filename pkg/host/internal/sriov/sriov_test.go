@@ -41,7 +41,7 @@ var _ = Describe("SRIOV", func() {
 		hostMock = hostMockPkg.NewMockHostManagerInterface(testCtrl)
 		storeManagerMode = hostStoreMockPkg.NewMockManagerInterface(testCtrl)
 
-		s = New(nil, hostMock, hostMock, hostMock, netlinkLibMock, dputilsLibMock)
+		s = New(nil, hostMock, hostMock, hostMock, hostMock, netlinkLibMock, dputilsLibMock)
 	})
 
 	AfterEach(func() {
@@ -112,13 +112,14 @@ var _ = Describe("SRIOV", func() {
 
 			hostMock.EXPECT().IsKernelLockdownMode().Return(false)
 			hostMock.EXPECT().AddUdevRule("0000:d8:00.0").Return(nil)
-			dputilsLibMock.EXPECT().GetVFList("0000:d8:00.0").Return([]string{"0000:d8:00.2", "0000:d8:00.3"}, nil)
+			dputilsLibMock.EXPECT().GetVFList("0000:d8:00.0").Return([]string{"0000:d8:00.2", "0000:d8:00.3"}, nil).Times(2)
 			pfLinkMock := netlinkMockPkg.NewMockLink(testCtrl)
 			netlinkLibMock.EXPECT().LinkByName("enp216s0f0np0").Return(pfLinkMock, nil).Times(2)
 			pfLinkMock.EXPECT().Attrs().Return(&netlink.LinkAttrs{OperState: netlink.OperDown})
 			netlinkLibMock.EXPECT().LinkSetUp(pfLinkMock).Return(nil)
 
 			dputilsLibMock.EXPECT().GetVFID("0000:d8:00.2").Return(0, nil).Times(2)
+			hostMock.EXPECT().Unbind("0000:d8:00.2").Return(nil)
 			hostMock.EXPECT().HasDriver("0000:d8:00.2").Return(false, "")
 			hostMock.EXPECT().BindDefaultDriver("0000:d8:00.2").Return(nil)
 			hostMock.EXPECT().HasDriver("0000:d8:00.2").Return(true, "test")
@@ -133,6 +134,7 @@ var _ = Describe("SRIOV", func() {
 			netlinkLibMock.EXPECT().LinkSetVfHardwareAddr(vf0LinkMock, 0, vf0Mac).Return(nil)
 
 			dputilsLibMock.EXPECT().GetVFID("0000:d8:00.3").Return(1, nil)
+			hostMock.EXPECT().Unbind("0000:d8:00.3").Return(nil)
 			hostMock.EXPECT().HasDriver("0000:d8:00.3").Return(true, "vfio-pci").Times(2)
 			hostMock.EXPECT().UnbindDriverIfNeeded("0000:d8:00.3", false).Return(nil)
 			hostMock.EXPECT().BindDpdkDriver("0000:d8:00.3", "vfio-pci").Return(nil)
@@ -184,13 +186,14 @@ var _ = Describe("SRIOV", func() {
 
 			hostMock.EXPECT().IsKernelLockdownMode().Return(false)
 			hostMock.EXPECT().AddUdevRule("0000:d8:00.0").Return(nil)
-			dputilsLibMock.EXPECT().GetVFList("0000:d8:00.0").Return([]string{"0000:d8:00.2"}, nil)
+			dputilsLibMock.EXPECT().GetVFList("0000:d8:00.0").Return([]string{"0000:d8:00.2"}, nil).Times(2)
 			pfLinkMock := netlinkMockPkg.NewMockLink(testCtrl)
 			netlinkLibMock.EXPECT().LinkByName("enp216s0f0np0").Return(pfLinkMock, nil).Times(2)
 			pfLinkMock.EXPECT().Attrs().Return(&netlink.LinkAttrs{OperState: netlink.OperDown})
 			netlinkLibMock.EXPECT().LinkSetUp(pfLinkMock).Return(nil)
 
 			dputilsLibMock.EXPECT().GetVFID("0000:d8:00.2").Return(0, nil).Times(2)
+			hostMock.EXPECT().Unbind("0000:d8:00.2").Return(nil)
 			hostMock.EXPECT().HasDriver("0000:d8:00.2").Return(true, "test").Times(2)
 			hostMock.EXPECT().UnbindDriverIfNeeded("0000:d8:00.2", true).Return(nil)
 			hostMock.EXPECT().Unbind("0000:d8:00.2").Return(nil)
@@ -224,6 +227,75 @@ var _ = Describe("SRIOV", func() {
 						NumVfs:     0,
 						TotalVfs:   1,
 						LinkType:   "IB",
+					}},
+				map[string]bool{}, false)).NotTo(HaveOccurred())
+			helpers.GinkgoAssertFileContentsEquals("/sys/bus/pci/devices/0000:d8:00.0/sriov_numvfs", "1")
+		})
+
+		It("should configure switchdev", func() {
+			helpers.GinkgoConfigureFakeFS(&fakefilesystem.FS{
+				Dirs:  []string{"/sys/bus/pci/devices/0000:d8:00.0"},
+				Files: map[string][]byte{"/sys/bus/pci/devices/0000:d8:00.0/sriov_numvfs": {}},
+			})
+
+			hostMock.EXPECT().IsKernelLockdownMode().Return(false)
+			hostMock.EXPECT().AddUdevRule("0000:d8:00.0").Return(nil)
+			dputilsLibMock.EXPECT().GetVFList("0000:d8:00.0").Return([]string{"0000:d8:00.2"}, nil).Times(3)
+			pfLinkMock := netlinkMockPkg.NewMockLink(testCtrl)
+			netlinkLibMock.EXPECT().LinkByName("enp216s0f0np0").Return(pfLinkMock, nil).Times(2)
+			pfLinkMock.EXPECT().Attrs().Return(&netlink.LinkAttrs{OperState: netlink.OperDown})
+			netlinkLibMock.EXPECT().LinkSetUp(pfLinkMock).Return(nil)
+			devlinkDev := &netlink.DevlinkDevice{}
+			netlinkLibMock.EXPECT().DevLinkGetDeviceByName("pci", "0000:d8:00.0").Return(devlinkDev, nil).Times(2)
+			netlinkLibMock.EXPECT().DevLinkSetEswitchMode(devlinkDev, "legacy").Return(nil)
+			netlinkLibMock.EXPECT().DevLinkSetEswitchMode(devlinkDev, "switchdev").Return(nil)
+
+			dputilsLibMock.EXPECT().GetVFID("0000:d8:00.2").Return(0, nil).Times(2)
+			hostMock.EXPECT().Unbind("0000:d8:00.2").Return(nil).Times(2)
+			hostMock.EXPECT().HasDriver("0000:d8:00.2").Return(false, "")
+			hostMock.EXPECT().BindDefaultDriver("0000:d8:00.2").Return(nil)
+			hostMock.EXPECT().HasDriver("0000:d8:00.2").Return(true, "test")
+			hostMock.EXPECT().UnbindDriverIfNeeded("0000:d8:00.2", true).Return(nil)
+			hostMock.EXPECT().BindDefaultDriver("0000:d8:00.2").Return(nil)
+			hostMock.EXPECT().SetNetdevMTU("0000:d8:00.2", 2000).Return(nil)
+			hostMock.EXPECT().TryGetInterfaceName("0000:d8:00.2").Return("enp216s0f0_0")
+			vf0LinkMock := netlinkMockPkg.NewMockLink(testCtrl)
+			vf0Mac, _ := net.ParseMAC("02:42:19:51:2f:af")
+			vf0LinkMock.EXPECT().Attrs().Return(&netlink.LinkAttrs{HardwareAddr: vf0Mac})
+			netlinkLibMock.EXPECT().LinkByName("enp216s0f0_0").Return(vf0LinkMock, nil)
+			netlinkLibMock.EXPECT().LinkSetVfHardwareAddr(vf0LinkMock, 0, vf0Mac).Return(nil)
+			hostMock.EXPECT().GetPhysPortName("enp216s0f0np0").Return("p0", nil)
+			hostMock.EXPECT().GetPhysSwitchID("enp216s0f0np0").Return("7cfe90ff2cc0", nil)
+			hostMock.EXPECT().AddVfRepresentorUdevRule("0000:d8:00.0", "enp216s0f0np0", "7cfe90ff2cc0", "p0").Return(nil)
+			hostMock.EXPECT().CreateVDPADevice("0000:d8:00.2", "vhost_vdpa")
+
+			storeManagerMode.EXPECT().SaveLastPfAppliedStatus(gomock.Any()).Return(nil)
+
+			Expect(s.ConfigSriovInterfaces(storeManagerMode,
+				[]sriovnetworkv1.Interface{{
+					Name:        "enp216s0f0np0",
+					PciAddress:  "0000:d8:00.0",
+					NumVfs:      1,
+					LinkType:    "ETH",
+					EswitchMode: "switchdev",
+					VfGroups: []sriovnetworkv1.VfGroup{
+						{
+							VfRange:      "0-0",
+							ResourceName: "test-resource0",
+							PolicyName:   "test-policy0",
+							Mtu:          2000,
+							IsRdma:       true,
+							VdpaType:     "vhost_vdpa",
+						}},
+				}},
+				[]sriovnetworkv1.InterfaceExt{
+					{
+						Name:        "enp216s0f0np0",
+						PciAddress:  "0000:d8:00.0",
+						NumVfs:      0,
+						TotalVfs:    1,
+						LinkType:    "ETH",
+						EswitchMode: "switchdev",
 					}},
 				map[string]bool{}, false)).NotTo(HaveOccurred())
 			helpers.GinkgoAssertFileContentsEquals("/sys/bus/pci/devices/0000:d8:00.0/sriov_numvfs", "1")
@@ -299,6 +371,11 @@ var _ = Describe("SRIOV", func() {
 				NumVfs:     2,
 			}, true, nil)
 			hostMock.EXPECT().RemoveUdevRule("0000:d8:00.0").Return(nil)
+			hostMock.EXPECT().RemoveVfRepresentorUdevRule("0000:d8:00.0").Return(nil)
+			hostMock.EXPECT().SetNetdevMTU("0000:d8:00.0", 1500).Return(nil)
+			dputilsLibMock.EXPECT().GetVFList("0000:d8:00.0").Return([]string{"0000:d8:00.2", "0000:d8:00.3"}, nil)
+			hostMock.EXPECT().Unbind("0000:d8:00.2").Return(nil)
+			hostMock.EXPECT().Unbind("0000:d8:00.3").Return(nil)
 
 			Expect(s.ConfigSriovInterfaces(storeManagerMode,
 				[]sriovnetworkv1.Interface{},
@@ -306,6 +383,7 @@ var _ = Describe("SRIOV", func() {
 					{
 						Name:       "enp216s0f0np0",
 						PciAddress: "0000:d8:00.0",
+						LinkType:   "ETH",
 						NumVfs:     2,
 						TotalVfs:   2,
 					}},
@@ -339,9 +417,9 @@ var _ = Describe("SRIOV", func() {
 
 			hostMock.EXPECT().IsKernelLockdownMode().Return(false)
 			hostMock.EXPECT().AddUdevRule("0000:d8:00.0").Return(nil)
-			dputilsLibMock.EXPECT().GetVFList("0000:d8:00.0").Return([]string{"0000:d8:00.2", "0000:d8:00.3"}, nil)
-			hostMock.EXPECT().Unbind("0000:d8:00.2").Return(nil)
-			hostMock.EXPECT().Unbind("0000:d8:00.3").Return(nil)
+			dputilsLibMock.EXPECT().GetVFList("0000:d8:00.0").Return([]string{"0000:d8:00.2", "0000:d8:00.3"}, nil).Times(2)
+			hostMock.EXPECT().Unbind("0000:d8:00.2").Return(nil).Times(2)
+			hostMock.EXPECT().Unbind("0000:d8:00.3").Return(nil).Times(2)
 
 			storeManagerMode.EXPECT().SaveLastPfAppliedStatus(gomock.Any()).Return(nil)
 

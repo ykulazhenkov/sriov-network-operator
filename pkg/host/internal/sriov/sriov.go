@@ -31,6 +31,7 @@ type sriov struct {
 	kernelHelper  types.KernelInterface
 	networkHelper types.NetworkInterface
 	udevHelper    types.UdevInterface
+	vdpaHelper    types.VdpaInterface
 	netlinkLib    netlinkPkg.NetlinkLib
 	dputilsLib    dputilsPkg.DPUtilsLib
 }
@@ -39,12 +40,14 @@ func New(utilsHelper utils.CmdInterface,
 	kernelHelper types.KernelInterface,
 	networkHelper types.NetworkInterface,
 	udevHelper types.UdevInterface,
+	vdpaHelper types.VdpaInterface,
 	netlinkLib netlinkPkg.NetlinkLib,
 	dputilsLib dputilsPkg.DPUtilsLib) types.SriovInterface {
 	return &sriov{utilsHelper: utilsHelper,
 		kernelHelper:  kernelHelper,
 		networkHelper: networkHelper,
 		udevHelper:    udevHelper,
+		vdpaHelper:    vdpaHelper,
 		netlinkLib:    netlinkLib,
 		dputilsLib:    dputilsLib,
 	}
@@ -72,14 +75,13 @@ func (s *sriov) SetSriovNumVfs(pciAddr string, numVfs int) error {
 
 func (s *sriov) ResetSriovDevice(ifaceStatus sriovnetworkv1.InterfaceExt) error {
 	log.Log.V(2).Info("ResetSriovDevice(): reset SRIOV device", "address", ifaceStatus.PciAddress)
-	if err := s.SetSriovNumVfs(ifaceStatus.PciAddress, 0); err != nil {
-		return err
-	}
 	if ifaceStatus.LinkType == consts.LinkTypeETH {
 		var mtu int
+		eswitchMode := sriovnetworkv1.ESwithModeLegacy
 		is := sriovnetworkv1.InitialState.GetInterfaceStateByPciAddress(ifaceStatus.PciAddress)
 		if is != nil {
 			mtu = is.Mtu
+			eswitchMode = sriovnetworkv1.GetEswitchModeFromStatus(is)
 		} else {
 			mtu = 1500
 		}
@@ -87,7 +89,14 @@ func (s *sriov) ResetSriovDevice(ifaceStatus sriovnetworkv1.InterfaceExt) error 
 		if err := s.networkHelper.SetNetdevMTU(ifaceStatus.PciAddress, mtu); err != nil {
 			return err
 		}
+		log.Log.V(2).Info("ResetSriovDevice(): reset eswitch mode and number of VFs", "mode", eswitchMode)
+		if err := s.setEswitchModeAndNumVFs(ifaceStatus.PciAddress, eswitchMode, 0, &ifaceStatus); err != nil {
+			return err
+		}
 	} else if ifaceStatus.LinkType == consts.LinkTypeIB {
+		if err := s.SetSriovNumVfs(ifaceStatus.PciAddress, 0); err != nil {
+			return err
+		}
 		if err := s.networkHelper.SetNetdevMTU(ifaceStatus.PciAddress, 2048); err != nil {
 			return err
 		}
@@ -335,6 +344,13 @@ func (s *sriov) checkExternallyManagedPF(iface *sriovnetworkv1.Interface, ifaceS
 		log.Log.Error(nil, errMsg)
 		return fmt.Errorf(errMsg)
 	}
+	if sriovnetworkv1.NeedToUpdateInterfaceEswitchMode(iface, ifaceStatus) {
+		errMsg := fmt.Sprintf("checkExternallyManagedPF(): requested ESwitchMode mode \"%s\" is not equal to configured \"%s\" "+
+			"but the policy is configured as ExternallyManaged for device %s",
+			sriovnetworkv1.GetEswitchModeFromSpec(iface), sriovnetworkv1.GetEswitchModeFromStatus(ifaceStatus), iface.PciAddress)
+		log.Log.Error(nil, errMsg)
+		return fmt.Errorf(errMsg)
+	}
 	if iface.Mtu > 0 && iface.Mtu > ifaceStatus.Mtu {
 		err := fmt.Errorf("checkExternallyManagedPF(): requested MTU(%d) is greater than configured MTU(%d) for device %s. cannot change MTU as policy is configured as ExternallyManaged",
 			iface.Mtu, ifaceStatus.Mtu, iface.PciAddress)
@@ -427,7 +443,16 @@ func (s *sriov) configSriovVFDevices(iface *sriovnetworkv1.Interface, ifaceStatu
 			if err = s.kernelHelper.UnbindDriverIfNeeded(addr, group.IsRdma); err != nil {
 				return err
 			}
-
+			// we set eswitch mode before this point and if the desired mode (and current at this point)
+			// is legacy, then VDPA device is already automatically disappeared,
+			// so we don't need to check it
+			if sriovnetworkv1.GetEswitchModeFromSpec(iface) == sriovnetworkv1.ESwithModeSwitchDev && group.VdpaType == "" {
+				if err := s.vdpaHelper.DeleteVDPADevice(addr); err != nil {
+					log.Log.Error(err, "configSriovVFDevices(): fail to delete VDPA device",
+						"device", addr)
+					return err
+				}
+			}
 			if !sriovnetworkv1.StringInArray(group.DeviceType, vars.DpdkDrivers) {
 				if err := s.kernelHelper.BindDefaultDriver(addr); err != nil {
 					log.Log.Error(err, "configSriovVFDevices(): fail to bind default driver for device", "device", addr)
@@ -437,6 +462,13 @@ func (s *sriov) configSriovVFDevices(iface *sriovnetworkv1.Interface, ifaceStatu
 				if group.Mtu > 0 {
 					if err := s.networkHelper.SetNetdevMTU(addr, group.Mtu); err != nil {
 						log.Log.Error(err, "configSriovVFDevices(): fail to set mtu for VF", "address", addr)
+						return err
+					}
+				}
+				if sriovnetworkv1.GetEswitchModeFromSpec(iface) == sriovnetworkv1.ESwithModeSwitchDev && group.VdpaType != "" {
+					if err := s.vdpaHelper.CreateVDPADevice(addr, group.VdpaType); err != nil {
+						log.Log.Error(err, "configSriovVFDevices(): fail to create VDPA device",
+							"vdpaType", group.VdpaType, "device", addr)
 						return err
 					}
 				}
@@ -567,7 +599,7 @@ func (s *sriov) ConfigSriovInterfaces(storeManager store.ManagerInterface,
 					"address", ifaceStatus.PciAddress)
 				continue
 			} else {
-				err = s.udevHelper.RemoveUdevRule(ifaceStatus.PciAddress)
+				err = s.removeUdevRules(ifaceStatus.PciAddress)
 				if err != nil {
 					return err
 				}
@@ -673,32 +705,99 @@ func (s *sriov) GetLinkType(ifaceStatus sriovnetworkv1.InterfaceExt) string {
 
 // create required udev rules for PF:
 // * rule to disable NetworkManager for VFs - for all modes
+// * rule to rename VF representors - only for switchdev mode
 func (s *sriov) addUdevRules(iface *sriovnetworkv1.Interface) error {
 	log.Log.V(2).Info("addUdevRules(): add udev rules for device",
 		"device", iface.PciAddress)
-	// TODO add creation of switchdev-related UDEV rules
-	return s.udevHelper.AddUdevRule(iface.PciAddress)
+	if err := s.udevHelper.AddUdevRule(iface.PciAddress); err != nil {
+		return err
+	}
+	if sriovnetworkv1.GetEswitchModeFromSpec(iface) == sriovnetworkv1.ESwithModeSwitchDev {
+		portName, err := s.networkHelper.GetPhysPortName(iface.Name)
+		if err != nil {
+			return err
+		}
+		switchID, err := s.networkHelper.GetPhysSwitchID(iface.Name)
+		if err != nil {
+			return err
+		}
+		if err := s.udevHelper.AddVfRepresentorUdevRule(iface.PciAddress, iface.Name, switchID, portName); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // remove all udev rules for PF created by the operator
 func (s *sriov) removeUdevRules(pciAddress string) error {
 	log.Log.V(2).Info("removeUdevRules(): remove udev rules for device",
 		"device", pciAddress)
-	// TODO add support for removing switchdev-related UDEV rules
-	return s.udevHelper.RemoveUdevRule(pciAddress)
+	if err := s.udevHelper.RemoveUdevRule(pciAddress); err != nil {
+		return err
+	}
+	return s.udevHelper.RemoveVfRepresentorUdevRule(pciAddress)
 }
 
 // create VFs on the PF
 func (s *sriov) createVFs(iface *sriovnetworkv1.Interface, ifaceStatus *sriovnetworkv1.InterfaceExt) error {
+	expectedEswitchMode := sriovnetworkv1.GetEswitchModeFromSpec(iface)
 	log.Log.V(2).Info("createVFs(): configure VFs for device",
-		"device", iface.PciAddress, "count", iface.NumVfs)
-	if iface.NumVfs == ifaceStatus.NumVfs {
+		"device", iface.PciAddress, "count", iface.NumVfs, "mode", expectedEswitchMode)
+	if iface.NumVfs == ifaceStatus.NumVfs && !sriovnetworkv1.NeedToUpdateInterfaceEswitchMode(iface, ifaceStatus) {
 		log.Log.V(2).Info("createVFs(): device is already configured",
-			"device", iface.PciAddress, "count", iface.NumVfs)
+			"device", iface.PciAddress, "count", iface.NumVfs, "mode", expectedEswitchMode)
 		return nil
 	}
-	// TODO add support for VF creation in switchdev mode
-	return s.SetSriovNumVfs(iface.PciAddress, iface.NumVfs)
+	return s.setEswitchModeAndNumVFs(iface.PciAddress, expectedEswitchMode, iface.NumVfs, ifaceStatus)
+}
+
+func (s *sriov) setEswitchModeAndNumVFs(pciAddr string, eswitchMode string, numVFs int, ifaceStatus *sriovnetworkv1.InterfaceExt) error {
+	log.Log.V(2).Info("setEswitchModeAndNumVFs(): configure VFs for device",
+		"device", pciAddr, "count", numVFs, "mode", eswitchMode)
+	// it not possible to change eswitch mode when NIC has VFs with driver
+	if err := s.unbindAllVFsOnPF(pciAddr); err != nil {
+		return err
+	}
+	if eswitchMode == sriovnetworkv1.ESwithModeSwitchDev {
+		return s.setNumVFsSwitchdev(pciAddr, numVFs, ifaceStatus)
+	}
+	return s.setNumVFsLegacy(pciAddr, numVFs, ifaceStatus)
+}
+
+// configure num VFs for nic in legacy mode
+func (s *sriov) setNumVFsLegacy(pciAddr string, numVFs int, ifaceStatus *sriovnetworkv1.InterfaceExt) error {
+	log.Log.V(2).Info("setNumVFsLegacy(): configure VFs for device",
+		"device", pciAddr, "count", numVFs)
+	if sriovnetworkv1.GetEswitchModeFromStatus(ifaceStatus) != sriovnetworkv1.ESwithModeLegacy {
+		if err := s.SetNicSriovMode(pciAddr, sriovnetworkv1.ESwithModeLegacy); err != nil {
+			return fmt.Errorf("failed to switch NIC to SRIOV legacy mode: %v", err)
+		}
+	}
+	return s.SetSriovNumVfs(pciAddr, numVFs)
+}
+
+// configure num VFs for nic in switchdev mode.
+// some drivers may not support VF creation in switchdev mode,
+// try to switch NIC to the legacy mode first, then create VFs and after that switch the NIC
+// back to the switchdev mode
+func (s *sriov) setNumVFsSwitchdev(pciAddr string, numVFs int, ifaceStatus *sriovnetworkv1.InterfaceExt) error {
+	log.Log.V(2).Info("setNumVFsSwitchdev(): configure VFs for device",
+		"device", pciAddr, "count", numVFs)
+	if sriovnetworkv1.GetEswitchModeFromStatus(ifaceStatus) != sriovnetworkv1.ESwithModeLegacy {
+		if err := s.SetNicSriovMode(pciAddr, sriovnetworkv1.ESwithModeLegacy); err != nil {
+			return fmt.Errorf("failed to switch NIC to SRIOV legacy mode: %v", err)
+		}
+	}
+	if err := s.SetSriovNumVfs(pciAddr, numVFs); err != nil {
+		return err
+	}
+	if err := s.unbindAllVFsOnPF(pciAddr); err != nil {
+		return err
+	}
+	if err := s.SetNicSriovMode(pciAddr, sriovnetworkv1.ESwithModeSwitchDev); err != nil {
+		return fmt.Errorf("failed to switch NIC to SRIOV switchdev mode: %v", err)
+	}
+	return nil
 }
 
 // retrieve all VFs for the PF and unbind them from a driver
