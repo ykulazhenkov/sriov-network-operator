@@ -525,7 +525,7 @@ func (s *sriov) ConfigSriovDevice(iface *sriovnetworkv1.Interface, ifaceStatus *
 }
 
 func (s *sriov) ConfigSriovInterfaces(storeManager store.ManagerInterface,
-	interfaces []sriovnetworkv1.Interface, ifaceStatuses []sriovnetworkv1.InterfaceExt, pfsToConfig map[string]bool, skipVFConfiguration bool) error {
+	interfaces []sriovnetworkv1.Interface, ifaceStatuses []sriovnetworkv1.InterfaceExt, skipVFConfiguration bool) error {
 	if s.kernelHelper.IsKernelLockdownMode() && mlx.HasMellanoxInterfacesInSpec(ifaceStatuses, interfaces) {
 		log.Log.Error(nil, "cannot use mellanox devices when in kernel lockdown mode")
 		return fmt.Errorf("cannot use mellanox devices when in kernel lockdown mode")
@@ -536,11 +536,6 @@ func (s *sriov) ConfigSriovInterfaces(storeManager store.ManagerInterface,
 		for _, iface := range interfaces {
 			if iface.PciAddress == ifaceStatus.PciAddress {
 				configured = true
-
-				if skip := pfsToConfig[iface.PciAddress]; skip {
-					break
-				}
-
 				if !sriovnetworkv1.NeedToUpdateSriov(&iface, &ifaceStatus) {
 					log.Log.V(2).Info("syncNodeState(): no need update interface", "address", iface.PciAddress)
 
@@ -575,10 +570,6 @@ func (s *sriov) ConfigSriovInterfaces(storeManager store.ManagerInterface,
 			}
 		}
 		if !configured && ifaceStatus.NumVfs > 0 {
-			if skip := pfsToConfig[ifaceStatus.PciAddress]; skip {
-				continue
-			}
-
 			// load the PF info
 			pfStatus, exist, err := storeManager.LoadPfsStatus(ifaceStatus.PciAddress)
 			if err != nil {

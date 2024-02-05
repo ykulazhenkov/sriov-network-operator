@@ -169,13 +169,7 @@ var _ = Describe("SRIOV", func() {
 						PciAddress: "0000:d8:00.0",
 						NumVfs:     0,
 						TotalVfs:   2,
-					},
-					{
-						PciAddress: "0000:d8:00.1",
-						NumVfs:     2,
-						TotalVfs:   2,
-					}},
-				map[string]bool{"0000:d8:00.1": true}, false)).NotTo(HaveOccurred())
+					}}, false)).NotTo(HaveOccurred())
 			helpers.GinkgoAssertFileContentsEquals("/sys/bus/pci/devices/0000:d8:00.0/sriov_numvfs", "2")
 		})
 		It("should configure IB", func() {
@@ -227,8 +221,7 @@ var _ = Describe("SRIOV", func() {
 						NumVfs:     0,
 						TotalVfs:   1,
 						LinkType:   "IB",
-					}},
-				map[string]bool{}, false)).NotTo(HaveOccurred())
+					}}, false)).NotTo(HaveOccurred())
 			helpers.GinkgoAssertFileContentsEquals("/sys/bus/pci/devices/0000:d8:00.0/sriov_numvfs", "1")
 		})
 
@@ -296,8 +289,7 @@ var _ = Describe("SRIOV", func() {
 						TotalVfs:    1,
 						LinkType:    "ETH",
 						EswitchMode: "switchdev",
-					}},
-				map[string]bool{}, false)).NotTo(HaveOccurred())
+					}}, false)).NotTo(HaveOccurred())
 			helpers.GinkgoAssertFileContentsEquals("/sys/bus/pci/devices/0000:d8:00.0/sriov_numvfs", "1")
 		})
 
@@ -325,8 +317,7 @@ var _ = Describe("SRIOV", func() {
 						PciAddress: "0000:d8:00.0",
 						NumVfs:     0,
 						TotalVfs:   0,
-					}},
-				map[string]bool{}, false)).To(HaveOccurred())
+					}}, false)).To(HaveOccurred())
 		})
 
 		It("externally managed - wrong MTU", func() {
@@ -354,8 +345,7 @@ var _ = Describe("SRIOV", func() {
 						Mtu:        1500,
 						NumVfs:     1,
 						TotalVfs:   1,
-					}},
-				map[string]bool{}, false)).To(HaveOccurred())
+					}}, false)).To(HaveOccurred())
 		})
 
 		It("reset device", func() {
@@ -386,8 +376,7 @@ var _ = Describe("SRIOV", func() {
 						LinkType:   "ETH",
 						NumVfs:     2,
 						TotalVfs:   2,
-					}},
-				map[string]bool{}, false)).NotTo(HaveOccurred())
+					}}, false)).NotTo(HaveOccurred())
 			helpers.GinkgoAssertFileContentsEquals("/sys/bus/pci/devices/0000:d8:00.0/sriov_numvfs", "0")
 		})
 		It("reset device - skip external", func() {
@@ -406,8 +395,7 @@ var _ = Describe("SRIOV", func() {
 						PciAddress: "0000:d8:00.0",
 						NumVfs:     2,
 						TotalVfs:   2,
-					}},
-				map[string]bool{}, false)).NotTo(HaveOccurred())
+					}}, false)).NotTo(HaveOccurred())
 		})
 		It("should configure - skipVFConfiguration is true", func() {
 			helpers.GinkgoConfigureFakeFS(&fakefilesystem.FS{
@@ -451,8 +439,7 @@ var _ = Describe("SRIOV", func() {
 						PciAddress: "0000:d8:00.0",
 						NumVfs:     0,
 						TotalVfs:   2,
-					}},
-				map[string]bool{}, true)).NotTo(HaveOccurred())
+					}}, true)).NotTo(HaveOccurred())
 			helpers.GinkgoAssertFileContentsEquals("/sys/bus/pci/devices/0000:d8:00.0/sriov_numvfs", "2")
 		})
 	})
