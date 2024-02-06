@@ -96,6 +96,8 @@ type NetworkInterface interface {
 	GetNetDevMac(name string) string
 	// GetNetDevLinkSpeed returns the network interface link speed
 	GetNetDevLinkSpeed(name string) string
+	// EnableHwTcOffload make sure that hw-tc-offload feature is enabled if device supports it
+	EnableHwTcOffload(ifaceName string) error
 }
 
 type ServiceInterface interface {
