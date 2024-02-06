@@ -6,20 +6,21 @@ import (
 	"syscall"
 
 	"github.com/k8snetworkplumbingwg/govdpa/pkg/kvdpa"
+	"github.com/vishvananda/netlink"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	constants "github.com/k8snetworkplumbingwg/sriov-network-operator/pkg/consts"
-	"github.com/k8snetworkplumbingwg/sriov-network-operator/pkg/host/internal/lib/govdpa"
+	netlinkLibPkg "github.com/k8snetworkplumbingwg/sriov-network-operator/pkg/host/internal/lib/netlink"
 	"github.com/k8snetworkplumbingwg/sriov-network-operator/pkg/host/types"
 )
 
 type vdpa struct {
-	kernel  types.KernelInterface
-	vdpaLib govdpa.GoVdpaLib
+	kernel     types.KernelInterface
+	netlinkLib netlinkLibPkg.NetlinkLib
 }
 
-func New(k types.KernelInterface, vdpaLib govdpa.GoVdpaLib) types.VdpaInterface {
-	return &vdpa{kernel: k, vdpaLib: vdpaLib}
+func New(k types.KernelInterface, netlinkLib netlinkLibPkg.NetlinkLib) types.VdpaInterface {
+	return &vdpa{kernel: k, netlinkLib: netlinkLib}
 }
 
 // CreateVDPADevice creates VDPA device for VF with required type,
@@ -33,17 +34,27 @@ func (v *vdpa) CreateVDPADevice(pciAddr, vdpaType string) error {
 		return fmt.Errorf("unknown VDPA device type: %s", vdpaType)
 	}
 	expectedVDPAName := generateVDPADevName(pciAddr)
-	_, err := v.vdpaLib.GetVdpaDevice(expectedVDPAName)
+	_, err := v.netlinkLib.VDPAGetDevByName(expectedVDPAName)
 	if err != nil {
 		if !errors.Is(err, syscall.ENODEV) {
 			log.Log.Error(err, "CreateVDPADevice(): fail to check if VDPA device exist",
 				"device", pciAddr, "vdpaDev", expectedVDPAName)
 			return err
 		}
-		if err := v.vdpaLib.AddVdpaDevice("pci/"+pciAddr, expectedVDPAName); err != nil {
-			log.Log.Error(err, "CreateVDPADevice(): fail to create VDPA device",
-				"device", pciAddr, "vdpaDev", expectedVDPAName)
-			return err
+		// first try to create VDPA device with MaxVQP parameter set to 32 to exactly match HW offloading use-case with the
+		// old swtichdev implementation. Create device without MaxVQP parameter if it is not supported.
+		if err := v.netlinkLib.VDPANewDev(expectedVDPAName, constants.BusPci, pciAddr, netlink.VDPANewDevParams{MaxVQP: 32}); err != nil {
+			if !errors.Is(err, syscall.ENOTSUP) {
+				log.Log.Error(err, "CreateVDPADevice(): fail to create VDPA device with MaxVQP parameter",
+					"device", pciAddr, "vdpaDev", expectedVDPAName)
+				return err
+			}
+			log.Log.V(2).Info("failed to create VDPA device with MaxVQP parameter, try without it")
+			if err := v.netlinkLib.VDPANewDev(expectedVDPAName, constants.BusPci, pciAddr, netlink.VDPANewDevParams{}); err != nil {
+				log.Log.Error(err, "CreateVDPADevice(): fail to create VDPA device without MaxVQP parameter",
+					"device", pciAddr, "vdpaDev", expectedVDPAName)
+				return err
+			}
 		}
 	}
 	err = v.kernel.BindDriverByBusAndDevice(constants.BusVdpa, expectedVDPAName, expectedDriver)
@@ -61,7 +72,7 @@ func (v *vdpa) DeleteVDPADevice(pciAddr string) error {
 	log.Log.V(2).Info("DeleteVDPADevice(): delete VDPA device for VF",
 		"device", pciAddr)
 	expectedVDPAName := generateVDPADevName(pciAddr)
-	if err := v.vdpaLib.DeleteVdpaDevice(expectedVDPAName); err != nil {
+	if err := v.netlinkLib.VDPADelDev(expectedVDPAName); err != nil {
 		if errors.Is(err, syscall.ENODEV) {
 			log.Log.V(2).Info("DeleteVDPADevice(): VDPA device not found",
 				"device", pciAddr, "name", expectedVDPAName)
@@ -79,23 +90,27 @@ func (v *vdpa) DeleteVDPADevice(pciAddr string) error {
 // pciAddr - PCI address of the VF
 func (v *vdpa) DiscoverVDPAType(pciAddr string) string {
 	expectedVDPADevName := generateVDPADevName(pciAddr)
-	vdpaDev, err := v.vdpaLib.GetVdpaDevice(expectedVDPADevName)
+	_, err := v.netlinkLib.VDPAGetDevByName(expectedVDPADevName)
 	if err != nil {
 		if errors.Is(err, syscall.ENODEV) {
-			log.Log.V(2).Info("discoverVDPAType(): VDPA device for VF not found", "device", pciAddr)
+			log.Log.V(2).Info("DiscoverVDPAType(): VDPA device for VF not found", "device", pciAddr)
 			return ""
 		}
-		log.Log.Error(err, "getVfInfo(): unable to get VF VDPA devices", "device", pciAddr)
+		log.Log.Error(err, "DiscoverVDPAType(): unable to get VF VDPA devices", "device", pciAddr)
 		return ""
 	}
-	driverName := vdpaDev.Driver()
+	driverName, err := v.kernel.GetDriverByBusAndDevice(constants.BusVdpa, expectedVDPADevName)
+	if err != nil {
+		log.Log.Error(err, "DiscoverVDPAType(): unable to get driver info for VF VDPA devices", "device", pciAddr)
+		return ""
+	}
 	if driverName == "" {
-		log.Log.V(2).Info("discoverVDPAType(): VDPA device has no driver", "device", pciAddr)
+		log.Log.V(2).Info("DiscoverVDPAType(): VDPA device has no driver", "device", pciAddr)
 		return ""
 	}
 	vdpaType := vdpaDriverToType(driverName)
 	if vdpaType == "" {
-		log.Log.Error(nil, "getVfInfo(): WARNING: unknown VDPA device type for VF, ignore",
+		log.Log.Error(nil, "DiscoverVDPAType(): WARNING: unknown VDPA device type for VF, ignore",
 			"device", pciAddr, "driver", driverName)
 	}
 	return vdpaType

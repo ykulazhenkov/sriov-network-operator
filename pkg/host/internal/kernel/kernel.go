@@ -250,6 +250,24 @@ func (k *kernel) HasDriver(pciAddr string) (bool, string) {
 	return false, ""
 }
 
+// GetDriverByBusAndDevice returns driver for the device or error.
+// returns "", nil if the device has no driver.
+// bus - the bus path in the sysfs, e.g. "pci" or "vdpa"
+// device - the name of the device on the bus, e.g. 0000:85:1e.5 for PCI or vpda1 for VDPA
+func (k *kernel) GetDriverByBusAndDevice(bus, device string) (string, error) {
+	driver, err := getDriverByBusAndDevice(bus, device)
+	if err != nil {
+		log.Log.V(2).Info("GetDriverByBusAndDevice(): can't read device driver for device", "device", device)
+		return "", err
+	}
+	if driver == "" {
+		log.Log.V(2).Info("GetDriverByBusAndDevice(): device has no driver", "device", device)
+	} else {
+		log.Log.V(2).Info("GetDriverByBusAndDevice(): device driver", "device", device, "driver", driver)
+	}
+	return driver, nil
+}
+
 func (k *kernel) TryEnableRdma() (bool, error) {
 	log.Log.V(2).Info("tryEnableRdma()")
 	chrootDefinition := utils.GetChrootExtension()
