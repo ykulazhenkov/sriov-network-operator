@@ -786,6 +786,9 @@ func (s *sriov) setNumVFsSwitchdev(pciAddr string, numVFs int, ifaceStatus *srio
 	if err := s.unbindAllVFsOnPF(pciAddr); err != nil {
 		return err
 	}
+	if err := s.networkHelper.EnableHwTcOffload(ifaceStatus.Name); err != nil {
+		return err
+	}
 	if err := s.SetNicSriovMode(pciAddr, sriovnetworkv1.ESwithModeSwitchDev); err != nil {
 		return fmt.Errorf("failed to switch NIC to SRIOV switchdev mode: %v", err)
 	}
