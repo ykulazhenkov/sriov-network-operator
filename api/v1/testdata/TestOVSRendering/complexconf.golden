@@ -1,0 +1,14 @@
+{
+  "apiVersion": "k8s.cni.cncf.io/v1",
+  "kind": "NetworkAttachmentDefinition",
+  "metadata": {
+    "annotations": {
+      "k8s.v1.cni.cncf.io/resourceName": "/testresource"
+    },
+    "name": "test",
+    "namespace": "testnamespace"
+  },
+  "spec": {
+    "config": "{ \"cniVersion\":\"0.3.1\", \"name\":\"test\",\"type\":\"ovs\",\"capabilities\":{\"foo\": \"bar\"},\"bridge\":\"test\",\"vlan\":100,\"mtu\":1500,\"trunk\":[{\"id\":120},{\"minID\":500,\"maxID\":550}],\"ofport_request\":1000,\"interface_type\":\"netdev\",\"configuration_path\":\"/foo/bar\",\"socket_file\":\"/socket\",\"link_state_check_retries\":20,\"link_state_check_interval\":5,\"ipam\":{\"type\":\"foo\"} }"
+  }
+}

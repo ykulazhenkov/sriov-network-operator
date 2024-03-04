@@ -125,6 +125,10 @@ func main() {
 		return []string{o.(*sriovnetworkv1.SriovIBNetwork).Spec.NetworkNamespace}
 	})
 
+	mgrGlobal.GetCache().IndexField(context.Background(), &sriovnetworkv1.OVSNetwork{}, "spec.networkNamespace", func(o client.Object) []string {
+		return []string{o.(*sriovnetworkv1.OVSNetwork).Spec.NetworkNamespace}
+	})
+
 	if err := initNicIDMap(); err != nil {
 		setupLog.Error(err, "unable to init NicIdMap")
 		os.Exit(1)
@@ -154,6 +158,13 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "SriovIBNetwork")
 		os.Exit(1)
 	}
+	if err = (&controllers.OVSNetworkReconciler{
+		Client: mgrGlobal.GetClient(),
+		Scheme: mgrGlobal.GetScheme(),
+	}).SetupWithManager(mgrGlobal); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "OVSNetwork")
+		os.Exit(1)
+	}
 	if err = (&controllers.SriovNetworkNodePolicyReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
@@ -175,13 +186,6 @@ func main() {
 		PlatformHelper: platformsHelper,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SriovNetworkPoolConfig")
-		os.Exit(1)
-	}
-	if err = (&controllers.OVSNetworkReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "OVSNetwork")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
