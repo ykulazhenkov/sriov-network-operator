@@ -130,6 +130,7 @@ var _ = BeforeSuite(func() {
 	os.Setenv("ADMISSION_CONTROLLERS_CERTIFICATES_INJECTOR_SECRET_NAME", "network-resources-injector-cert")
 	os.Setenv("SRIOV_CNI_IMAGE", "mock-image")
 	os.Setenv("SRIOV_INFINIBAND_CNI_IMAGE", "mock-image")
+	os.Setenv("OVS_CNI_IMAGE", "mock-image")
 	os.Setenv("SRIOV_DEVICE_PLUGIN_IMAGE", "mock-image")
 	os.Setenv("NETWORK_RESOURCES_INJECTOR_IMAGE", "mock-image")
 	os.Setenv("SRIOV_NETWORK_CONFIG_DAEMON_IMAGE", "mock-image")
