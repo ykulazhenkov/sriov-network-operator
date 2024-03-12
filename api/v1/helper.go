@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -416,6 +417,27 @@ func (p *SriovNetworkNodePolicy) Apply(state *SriovNetworkNodeState, equalPriori
 				}
 				if !found {
 					state.Spec.Interfaces = append(state.Spec.Interfaces, result)
+				}
+			}
+			if p.Spec.Bridge.OVS != nil {
+				ovsBridge := OVSConfigExt{
+					Name:   GenerateBridgeName(&iface),
+					Bridge: p.Spec.Bridge.OVS.Bridge,
+					Uplinks: []OVSUplinkConfigExt{{
+						PciAddress: iface.PciAddress,
+						Name:       iface.Name,
+						Interface:  p.Spec.Bridge.OVS.Uplink.Interface,
+					}},
+				}
+				log.Info("Update bridge for interface", "name", iface.Name, "bridge", ovsBridge.Name)
+
+				pos, exist := slices.BinarySearchFunc(state.Spec.Bridges.OVS, ovsBridge, func(x, y OVSConfigExt) int {
+					return strings.Compare(x.Name, y.Name)
+				})
+				if exist {
+					state.Spec.Bridges.OVS[pos] = ovsBridge
+				} else {
+					state.Spec.Bridges.OVS = slices.Insert(state.Spec.Bridges.OVS, pos, ovsBridge)
 				}
 			}
 		}
@@ -864,4 +886,10 @@ func NetFilterMatch(netFilter string, netValue string) (isMatch bool) {
 	}
 
 	return netFilterResult[0][1] == netValueResult[0][1] && netFilterResult[0][2] == netValueResult[0][2]
+}
+
+// GenerateBridgeName generate predictable name for the software bridge
+// current format is: br-0000_00_03.0
+func GenerateBridgeName(iface *InterfaceExt) string {
+	return fmt.Sprintf("br-%s", strings.ReplaceAll(iface.PciAddress, ":", "_"))
 }

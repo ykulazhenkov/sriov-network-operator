@@ -43,6 +43,69 @@ spec:
           spec:
             description: SriovNetworkNodeStateSpec defines the desired state of SriovNetworkNodeState
             properties:
+              bridges:
+                description: Bridges contains list of bridges
+                properties:
+                  ovs:
+                    items:
+                      properties:
+                        bridge:
+                          description: bridge-level configuration for the bridge
+                          properties:
+                            datapath_type:
+                              type: string
+                            external_ids:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            other_config:
+                              additionalProperties:
+                                type: string
+                              type: object
+                          type: object
+                        name:
+                          description: name of the bridge
+                          type: string
+                        uplinks:
+                          description: uplink-level bridge configuration for each
+                            uplink(PF). in the initial implementation will always
+                            contain one element
+                          items:
+                            properties:
+                              interface:
+                                description: configuration from the Interface OVS
+                                  table for the PF
+                                properties:
+                                  external_ids:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  options:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  other_config:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  type:
+                                    type: string
+                                type: object
+                              name:
+                                description: name of the PF interface
+                                type: string
+                              pciAddress:
+                                description: pci address of the PF
+                                type: string
+                            required:
+                            - pciAddress
+                            type: object
+                          type: array
+                      required:
+                      - name
+                      type: object
+                    type: array
+                type: object
               dpConfigVersion:
                 type: string
               interfaces:
@@ -90,6 +153,69 @@ spec:
             description: SriovNetworkNodeStateStatus defines the observed state of
               SriovNetworkNodeState
             properties:
+              bridges:
+                description: Bridges contains list of bridges
+                properties:
+                  ovs:
+                    items:
+                      properties:
+                        bridge:
+                          description: bridge-level configuration for the bridge
+                          properties:
+                            datapath_type:
+                              type: string
+                            external_ids:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            other_config:
+                              additionalProperties:
+                                type: string
+                              type: object
+                          type: object
+                        name:
+                          description: name of the bridge
+                          type: string
+                        uplinks:
+                          description: uplink-level bridge configuration for each
+                            uplink(PF). in the initial implementation will always
+                            contain one element
+                          items:
+                            properties:
+                              interface:
+                                description: configuration from the Interface OVS
+                                  table for the PF
+                                properties:
+                                  external_ids:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  options:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  other_config:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  type:
+                                    type: string
+                                type: object
+                              name:
+                                description: name of the PF interface
+                                type: string
+                              pciAddress:
+                                description: pci address of the PF
+                                type: string
+                            required:
+                            - pciAddress
+                            type: object
+                          type: array
+                      required:
+                      - name
+                      type: object
+                    type: array
+                type: object
               interfaces:
                 items:
                   properties:
@@ -111,6 +237,8 @@ spec:
                           name:
                             type: string
                           pciAddress:
+                            type: string
+                          representorName:
                             type: string
                           vdpaType:
                             type: string

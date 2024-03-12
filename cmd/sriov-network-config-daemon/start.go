@@ -78,11 +78,13 @@ var (
 	}
 
 	startOpts struct {
-		kubeconfig        string
-		nodeName          string
-		systemd           bool
-		disabledPlugins   stringList
-		parallelNicConfig bool
+		kubeconfig          string
+		nodeName            string
+		systemd             bool
+		disabledPlugins     stringList
+		parallelNicConfig   bool
+		ovsBridgeManagement bool
+		ovsSocketPath       string
 	}
 )
 
@@ -93,6 +95,8 @@ func init() {
 	startCmd.PersistentFlags().BoolVar(&startOpts.systemd, "use-systemd-service", false, "use config daemon in systemd mode")
 	startCmd.PersistentFlags().VarP(&startOpts.disabledPlugins, "disable-plugins", "", "comma-separated list of plugins to disable")
 	startCmd.PersistentFlags().BoolVar(&startOpts.parallelNicConfig, "parallel-nic-config", false, "perform NIC configuration in parallel")
+	startCmd.PersistentFlags().BoolVar(&startOpts.ovsBridgeManagement, "ovs-bridge-management", false, "controls state of the ovs-bridge-management functionality")
+	startCmd.PersistentFlags().StringVar(&startOpts.ovsSocketPath, "ovs-socket-path", vars.OVSDBSocketPath, "path for OVSDB socket")
 }
 
 func runStartCmd(cmd *cobra.Command, args []string) error {
@@ -116,6 +120,9 @@ func runStartCmd(cmd *cobra.Command, args []string) error {
 		startOpts.nodeName = name
 	}
 	vars.NodeName = startOpts.nodeName
+
+	vars.OVSManageBridges = startOpts.ovsBridgeManagement
+	vars.OVSDBSocketPath = startOpts.ovsSocketPath
 
 	for _, p := range startOpts.disabledPlugins {
 		if _, ok := vars.DisableablePlugins[p]; !ok {

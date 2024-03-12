@@ -34,6 +34,20 @@ func (m *MockManagerInterface) EXPECT() *MockManagerInterfaceMockRecorder {
 	return m.recorder
 }
 
+// AddManagedOVSBridge mocks base method.
+func (m *MockManagerInterface) AddManagedOVSBridge(br *v1.OVSConfigExt) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddManagedOVSBridge", br)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddManagedOVSBridge indicates an expected call of AddManagedOVSBridge.
+func (mr *MockManagerInterfaceMockRecorder) AddManagedOVSBridge(br interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddManagedOVSBridge", reflect.TypeOf((*MockManagerInterface)(nil).AddManagedOVSBridge), br)
+}
+
 // ClearPCIAddressFolder mocks base method.
 func (m *MockManagerInterface) ClearPCIAddressFolder() error {
 	m.ctrl.T.Helper()
@@ -63,6 +77,34 @@ func (mr *MockManagerInterfaceMockRecorder) GetCheckPointNodeState() *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCheckPointNodeState", reflect.TypeOf((*MockManagerInterface)(nil).GetCheckPointNodeState))
 }
 
+// GetManagedOVSBridge mocks base method.
+func (m *MockManagerInterface) GetManagedOVSBridge(name string) *v1.OVSConfigExt {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetManagedOVSBridge", name)
+	ret0, _ := ret[0].(*v1.OVSConfigExt)
+	return ret0
+}
+
+// GetManagedOVSBridge indicates an expected call of GetManagedOVSBridge.
+func (mr *MockManagerInterfaceMockRecorder) GetManagedOVSBridge(name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetManagedOVSBridge", reflect.TypeOf((*MockManagerInterface)(nil).GetManagedOVSBridge), name)
+}
+
+// GetManagedOVSBridges mocks base method.
+func (m *MockManagerInterface) GetManagedOVSBridges() map[string]*v1.OVSConfigExt {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetManagedOVSBridges")
+	ret0, _ := ret[0].(map[string]*v1.OVSConfigExt)
+	return ret0
+}
+
+// GetManagedOVSBridges indicates an expected call of GetManagedOVSBridges.
+func (mr *MockManagerInterfaceMockRecorder) GetManagedOVSBridges() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetManagedOVSBridges", reflect.TypeOf((*MockManagerInterface)(nil).GetManagedOVSBridges))
+}
+
 // LoadPfsStatus mocks base method.
 func (m *MockManagerInterface) LoadPfsStatus(pciAddress string) (*v1.Interface, bool, error) {
 	m.ctrl.T.Helper()
@@ -77,6 +119,20 @@ func (m *MockManagerInterface) LoadPfsStatus(pciAddress string) (*v1.Interface, 
 func (mr *MockManagerInterfaceMockRecorder) LoadPfsStatus(pciAddress interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadPfsStatus", reflect.TypeOf((*MockManagerInterface)(nil).LoadPfsStatus), pciAddress)
+}
+
+// RemoveManagedOVSBridge mocks base method.
+func (m *MockManagerInterface) RemoveManagedOVSBridge(name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveManagedOVSBridge", name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RemoveManagedOVSBridge indicates an expected call of RemoveManagedOVSBridge.
+func (mr *MockManagerInterfaceMockRecorder) RemoveManagedOVSBridge(name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveManagedOVSBridge", reflect.TypeOf((*MockManagerInterface)(nil).RemoveManagedOVSBridge), name)
 }
 
 // SaveLastPfAppliedStatus mocks base method.

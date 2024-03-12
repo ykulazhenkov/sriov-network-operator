@@ -1,6 +1,8 @@
 package types
 
 import (
+	"context"
+
 	"github.com/jaypipes/ghw"
 	"github.com/vishvananda/netlink"
 
@@ -183,4 +185,22 @@ type VdpaInterface interface {
 	// DiscoverVDPAType returns type of existing VDPA device for VF,
 	// returns empty string if VDPA device not found or unknown driver is in use
 	DiscoverVDPAType(pciAddr string) string
+}
+
+type OVSInterface interface {
+	// GetOVSManager return new instance of OVS client
+	GetOVSManager(ctx context.Context) (OVSManagerInterface, error)
+}
+
+type OVSManagerInterface interface {
+	// CreateOVSBridge creates OVS bridge from the provided config,
+	// does nothing if OVS bridge with the right config already exist,
+	// if OVS bridge exist with different config it will be removed and re-created
+	CreateOVSBridge(ctx context.Context, conf *sriovnetworkv1.OVSConfigExt, storeManager store.ManagerInterface) error
+	// GetOVSBridges returns configuration for all managed bridges
+	GetOVSBridges(ctx context.Context, storeManager store.ManagerInterface) ([]sriovnetworkv1.OVSConfigExt, error)
+	// RemoveOVSBridge removes OVS bridge to which PF with ifaceAddr is attached
+	RemoveOVSBridge(ctx context.Context, ifaceAddr string, storeManager store.ManagerInterface) error
+	// Close connection and release resources
+	Close()
 }

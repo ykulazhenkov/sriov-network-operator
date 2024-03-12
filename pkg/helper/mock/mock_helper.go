@@ -39,6 +39,20 @@ func (m *MockHostHelpersInterface) EXPECT() *MockHostHelpersInterfaceMockRecorde
 	return m.recorder
 }
 
+// AddManagedOVSBridge mocks base method.
+func (m *MockHostHelpersInterface) AddManagedOVSBridge(br *v1.OVSConfigExt) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddManagedOVSBridge", br)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddManagedOVSBridge indicates an expected call of AddManagedOVSBridge.
+func (mr *MockHostHelpersInterfaceMockRecorder) AddManagedOVSBridge(br interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddManagedOVSBridge", reflect.TypeOf((*MockHostHelpersInterface)(nil).AddManagedOVSBridge), br)
+}
+
 // AddUdevRule mocks base method.
 func (m *MockHostHelpersInterface) AddUdevRule(pfPciAddress string) error {
 	m.ctrl.T.Helper()
@@ -368,6 +382,34 @@ func (m *MockHostHelpersInterface) GetLinkType(name string) string {
 func (mr *MockHostHelpersInterfaceMockRecorder) GetLinkType(name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinkType", reflect.TypeOf((*MockHostHelpersInterface)(nil).GetLinkType), name)
+}
+
+// GetManagedOVSBridge mocks base method.
+func (m *MockHostHelpersInterface) GetManagedOVSBridge(name string) *v1.OVSConfigExt {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetManagedOVSBridge", name)
+	ret0, _ := ret[0].(*v1.OVSConfigExt)
+	return ret0
+}
+
+// GetManagedOVSBridge indicates an expected call of GetManagedOVSBridge.
+func (mr *MockHostHelpersInterfaceMockRecorder) GetManagedOVSBridge(name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetManagedOVSBridge", reflect.TypeOf((*MockHostHelpersInterface)(nil).GetManagedOVSBridge), name)
+}
+
+// GetManagedOVSBridges mocks base method.
+func (m *MockHostHelpersInterface) GetManagedOVSBridges() map[string]*v1.OVSConfigExt {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetManagedOVSBridges")
+	ret0, _ := ret[0].(map[string]*v1.OVSConfigExt)
+	return ret0
+}
+
+// GetManagedOVSBridges indicates an expected call of GetManagedOVSBridges.
+func (mr *MockHostHelpersInterfaceMockRecorder) GetManagedOVSBridges() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetManagedOVSBridges", reflect.TypeOf((*MockHostHelpersInterface)(nil).GetManagedOVSBridges))
 }
 
 // GetMellanoxBlueFieldMode mocks base method.
@@ -856,6 +898,20 @@ func (m *MockHostHelpersInterface) ReloadDriver(driver string) error {
 func (mr *MockHostHelpersInterfaceMockRecorder) ReloadDriver(driver interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReloadDriver", reflect.TypeOf((*MockHostHelpersInterface)(nil).ReloadDriver), driver)
+}
+
+// RemoveManagedOVSBridge mocks base method.
+func (m *MockHostHelpersInterface) RemoveManagedOVSBridge(name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveManagedOVSBridge", name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RemoveManagedOVSBridge indicates an expected call of RemoveManagedOVSBridge.
+func (mr *MockHostHelpersInterfaceMockRecorder) RemoveManagedOVSBridge(name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveManagedOVSBridge", reflect.TypeOf((*MockHostHelpersInterface)(nil).RemoveManagedOVSBridge), name)
 }
 
 // RemoveUdevRule mocks base method.

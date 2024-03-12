@@ -61,6 +61,9 @@ type SriovNetworkNodePolicySpec struct {
 	ExcludeTopology bool `json:"excludeTopology,omitempty"`
 	// don't create the virtual function only allocated them to the device plugin. Defaults to false.
 	ExternallyManaged bool `json:"externallyManaged,omitempty"`
+	// contains bridge configuration for matching PF
+	// valid only for eSwitchMode==switchdev
+	Bridge Bridge `json:"bridge,omitempty"`
 }
 
 type SriovNetworkNicSelector struct {
@@ -74,6 +77,41 @@ type SriovNetworkNicSelector struct {
 	PfNames []string `json:"pfNames,omitempty"`
 	// Infrastructure Networking selection filter. Allowed value "openstack/NetworkID:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 	NetFilter string `json:"netFilter,omitempty"`
+}
+
+// contains spec for the bridge
+// only one bridge type can be set
+type Bridge struct {
+	// contains config for OVS bridge,
+	OVS *OVSConfig `json:"ovs,omitempty"`
+}
+
+// OVSConfig optional configuration for OVS bridge and uplink Interface
+type OVSConfig struct {
+	// contains bridge level settings
+	Bridge OVSBridgeConfig `json:"bridge,omitempty"`
+	// contains settings for uplink (PF)
+	Uplink OVSUplinkConfig `json:"uplink,omitempty"`
+}
+
+// OVSBridgeConfig contains some options from the Bridge table in OVSDB
+type OVSBridgeConfig struct {
+	DatapathType string            `json:"datapath_type,omitempty"`
+	ExternalIDs  map[string]string `json:"external_ids,omitempty"`
+	OtherConfig  map[string]string `json:"other_config,omitempty"`
+}
+
+// OVSUplinkConfig contains PF interface configuration for the bridge
+type OVSUplinkConfig struct {
+	Interface OVSInterfaceConfig `json:"interface,omitempty"`
+}
+
+// OVSInterfaceConfig contains some options from the Interface table of the OVSDB for PF
+type OVSInterfaceConfig struct {
+	Type        string            `json:"type,omitempty"`
+	Options     map[string]string `json:"options,omitempty"`
+	ExternalIDs map[string]string `json:"external_ids,omitempty"`
+	OtherConfig map[string]string `json:"other_config,omitempty"`
 }
 
 // SriovNetworkNodePolicyStatus defines the observed state of SriovNetworkNodePolicy

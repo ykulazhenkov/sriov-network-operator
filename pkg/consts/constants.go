@@ -54,6 +54,7 @@ const (
 	PfAppliedConfig            = SriovConfBasePath + "/pci"
 	SriovSwitchDevConfPath     = SriovConfBasePath + "/sriov_config.json"
 	SriovHostSwitchDevConfPath = Host + SriovSwitchDevConfPath
+	ManagedOVSBridgesPath      = SriovConfBasePath + "/managed-ovs-bridges.json"
 
 	DrainAnnotationState         = "sriovnetwork.openshift.io/state"
 	DrainAnnotationStateRequired = "sriovnetwork.openshift.io/state-required"

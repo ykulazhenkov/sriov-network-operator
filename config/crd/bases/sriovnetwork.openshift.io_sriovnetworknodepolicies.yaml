@@ -36,6 +36,52 @@ spec:
           spec:
             description: SriovNetworkNodePolicySpec defines the desired state of SriovNetworkNodePolicy
             properties:
+              bridge:
+                description: contains bridge configuration for matching PF valid only
+                  for eSwitchMode==switchdev
+                properties:
+                  ovs:
+                    description: contains config for OVS bridge,
+                    properties:
+                      bridge:
+                        description: contains bridge level settings
+                        properties:
+                          datapath_type:
+                            type: string
+                          external_ids:
+                            additionalProperties:
+                              type: string
+                            type: object
+                          other_config:
+                            additionalProperties:
+                              type: string
+                            type: object
+                        type: object
+                      uplink:
+                        description: contains settings for uplink (PF)
+                        properties:
+                          interface:
+                            description: OVSInterfaceConfig contains some options
+                              from the Interface table of the OVSDB for PF
+                            properties:
+                              external_ids:
+                                additionalProperties:
+                                  type: string
+                                type: object
+                              options:
+                                additionalProperties:
+                                  type: string
+                                type: object
+                              other_config:
+                                additionalProperties:
+                                  type: string
+                                type: object
+                              type:
+                                type: string
+                            type: object
+                        type: object
+                    type: object
+                type: object
               deviceType:
                 description: The driver type for configured VFs. Allowed value "netdevice",
                   "vfio-pci". Defaults to netdevice.

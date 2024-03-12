@@ -6,6 +6,7 @@ import (
 	"github.com/k8snetworkplumbingwg/sriov-network-operator/pkg/host/internal/lib/ethtool"
 	"github.com/k8snetworkplumbingwg/sriov-network-operator/pkg/host/internal/lib/netlink"
 	"github.com/k8snetworkplumbingwg/sriov-network-operator/pkg/host/internal/network"
+	"github.com/k8snetworkplumbingwg/sriov-network-operator/pkg/host/internal/ovs"
 	"github.com/k8snetworkplumbingwg/sriov-network-operator/pkg/host/internal/service"
 	"github.com/k8snetworkplumbingwg/sriov-network-operator/pkg/host/internal/sriov"
 	"github.com/k8snetworkplumbingwg/sriov-network-operator/pkg/host/internal/udev"
@@ -24,6 +25,7 @@ type HostManagerInterface interface {
 	types.UdevInterface
 	types.SriovInterface
 	types.VdpaInterface
+	types.OVSInterface
 }
 
 type hostManager struct {
@@ -34,6 +36,7 @@ type hostManager struct {
 	types.UdevInterface
 	types.SriovInterface
 	types.VdpaInterface
+	types.OVSInterface
 }
 
 func NewHostManager(utilsInterface utils.CmdInterface) HostManagerInterface {
@@ -46,6 +49,7 @@ func NewHostManager(utilsInterface utils.CmdInterface) HostManagerInterface {
 	u := udev.New(utilsInterface)
 	v := vdpa.New(k, netlinkLib)
 	sr := sriov.New(utilsInterface, k, n, u, v, netlinkLib, dpUtils)
+	o := ovs.New()
 
 	return &hostManager{
 		utilsInterface,
@@ -55,5 +59,6 @@ func NewHostManager(utilsInterface utils.CmdInterface) HostManagerInterface {
 		u,
 		sr,
 		v,
+		o,
 	}
 }

@@ -51,6 +51,12 @@ var (
 	// FilesystemRoot used by test to mock interactions with filesystem
 	FilesystemRoot = ""
 
+	// OVSManageBridges controls state of the OVS bridge management feature
+	OVSManageBridges = false
+
+	// OVSDBSocketPath path to OVSDB socket
+	OVSDBSocketPath = "unix:///var/run/openvswitch/db.sock"
+
 	//Cluster variables
 	Config *rest.Config    = nil
 	Scheme *runtime.Scheme = nil
