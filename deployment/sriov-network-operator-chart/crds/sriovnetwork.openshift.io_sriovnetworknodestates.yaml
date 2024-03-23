@@ -174,6 +174,14 @@ spec:
                   - pciAddress
                   type: object
                 type: array
+              system:
+                properties:
+                  rdmaMode:
+                    enum:
+                    - shared
+                    - exclusive
+                    type: string
+                type: object
             type: object
           status:
             description: SriovNetworkNodeStateStatus defines the observed state of
@@ -335,6 +343,14 @@ spec:
                 type: string
               syncStatus:
                 type: string
+              system:
+                properties:
+                  rdmaMode:
+                    enum:
+                    - shared
+                    - exclusive
+                    type: string
+                type: object
             type: object
         type: object
     served: true
