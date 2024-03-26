@@ -149,14 +149,19 @@ type SriovInterface interface {
 	// GetLinkType return the link type
 	// supported types are ethernet and infiniband
 	GetLinkType(name string) string
-	// ResetSriovDevice resets the number of virtual function for the specific physical function to zero
-	ResetSriovDevice(ifaceStatus sriovnetworkv1.InterfaceExt) error
+	// ResetSriovDevice resets the number of virtual function for the specific physical function to zero,
+	// if earlyBoot option is set will skip configuration reset for managed bridges
+	ResetSriovDevice(ifaceStatus sriovnetworkv1.InterfaceExt, earlyBoot bool) error
 	// DiscoverSriovDevices returns a list of all the available SR-IOV capable network interfaces on the system
 	DiscoverSriovDevices(storeManager store.ManagerInterface) ([]sriovnetworkv1.InterfaceExt, error)
+	// DiscoverBridges returns information about managed bridges on the host
+	DiscoverBridges() (sriovnetworkv1.Bridges, error)
 	// ConfigSriovInterfaces configure multiple SR-IOV devices with the desired configuration
-	// if skipVFConfiguration flag is set, the function will configure PF and create VFs on it, but will skip VFs configuration
+	// if earlyBoot flag is set, the function will configure PF and create VFs on it, but will skip VFs configuration,
+	// Configuration of the managed software bridge is not validated during early boot,
+	// because OpenVswitch is not available at this stage yet
 	ConfigSriovInterfaces(storeManager store.ManagerInterface, interfaces []sriovnetworkv1.Interface,
-		ifaceStatuses []sriovnetworkv1.InterfaceExt, skipVFConfiguration bool) error
+		ifaceStatuses []sriovnetworkv1.InterfaceExt, earlyBoot bool) error
 	// ConfigSriovInterfaces configure virtual functions for virtual environments with the desired configuration
 	ConfigSriovDeviceVirtual(iface *sriovnetworkv1.Interface) error
 }
@@ -191,9 +196,9 @@ type OVSInterface interface {
 	// CreateOVSBridge creates OVS bridge from the provided config,
 	// does nothing if OVS bridge with the right config already exist,
 	// if OVS bridge exist with different config it will be removed and re-created
-	CreateOVSBridge(ctx context.Context, conf *sriovnetworkv1.OVSConfigExt, storeManager store.ManagerInterface) error
+	CreateOVSBridge(ctx context.Context, conf *sriovnetworkv1.OVSConfigExt) error
 	// GetOVSBridges returns configuration for all managed bridges
-	GetOVSBridges(ctx context.Context, storeManager store.ManagerInterface) ([]sriovnetworkv1.OVSConfigExt, error)
+	GetOVSBridges(ctx context.Context) ([]sriovnetworkv1.OVSConfigExt, error)
 	// RemoveOVSBridge removes OVS bridge to which PF with ifaceAddr is attached
-	RemoveOVSBridge(ctx context.Context, ifaceAddr string, storeManager store.ManagerInterface) error
+	RemoveOVSBridge(ctx context.Context, ifaceAddr string) error
 }

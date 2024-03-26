@@ -5,6 +5,7 @@
 package mock_host
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -138,17 +139,31 @@ func (mr *MockHostManagerInterfaceMockRecorder) ConfigSriovDeviceVirtual(iface i
 }
 
 // ConfigSriovInterfaces mocks base method.
-func (m *MockHostManagerInterface) ConfigSriovInterfaces(storeManager store.ManagerInterface, interfaces []v1.Interface, ifaceStatuses []v1.InterfaceExt, skipVFConfiguration bool) error {
+func (m *MockHostManagerInterface) ConfigSriovInterfaces(storeManager store.ManagerInterface, interfaces []v1.Interface, ifaceStatuses []v1.InterfaceExt, earlyBoot bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ConfigSriovInterfaces", storeManager, interfaces, ifaceStatuses, skipVFConfiguration)
+	ret := m.ctrl.Call(m, "ConfigSriovInterfaces", storeManager, interfaces, ifaceStatuses, earlyBoot)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ConfigSriovInterfaces indicates an expected call of ConfigSriovInterfaces.
-func (mr *MockHostManagerInterfaceMockRecorder) ConfigSriovInterfaces(storeManager, interfaces, ifaceStatuses, skipVFConfiguration interface{}) *gomock.Call {
+func (mr *MockHostManagerInterfaceMockRecorder) ConfigSriovInterfaces(storeManager, interfaces, ifaceStatuses, earlyBoot interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfigSriovInterfaces", reflect.TypeOf((*MockHostManagerInterface)(nil).ConfigSriovInterfaces), storeManager, interfaces, ifaceStatuses, skipVFConfiguration)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfigSriovInterfaces", reflect.TypeOf((*MockHostManagerInterface)(nil).ConfigSriovInterfaces), storeManager, interfaces, ifaceStatuses, earlyBoot)
+}
+
+// CreateOVSBridge mocks base method.
+func (m *MockHostManagerInterface) CreateOVSBridge(ctx context.Context, conf *v1.OVSConfigExt) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateOVSBridge", ctx, conf)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateOVSBridge indicates an expected call of CreateOVSBridge.
+func (mr *MockHostManagerInterfaceMockRecorder) CreateOVSBridge(ctx, conf interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOVSBridge", reflect.TypeOf((*MockHostManagerInterface)(nil).CreateOVSBridge), ctx, conf)
 }
 
 // CreateVDPADevice mocks base method.
@@ -177,6 +192,21 @@ func (m *MockHostManagerInterface) DeleteVDPADevice(pciAddr string) error {
 func (mr *MockHostManagerInterfaceMockRecorder) DeleteVDPADevice(pciAddr interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteVDPADevice", reflect.TypeOf((*MockHostManagerInterface)(nil).DeleteVDPADevice), pciAddr)
+}
+
+// DiscoverBridges mocks base method.
+func (m *MockHostManagerInterface) DiscoverBridges() (v1.Bridges, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DiscoverBridges")
+	ret0, _ := ret[0].(v1.Bridges)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DiscoverBridges indicates an expected call of DiscoverBridges.
+func (mr *MockHostManagerInterfaceMockRecorder) DiscoverBridges() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DiscoverBridges", reflect.TypeOf((*MockHostManagerInterface)(nil).DiscoverBridges))
 }
 
 // DiscoverSriovDevices mocks base method.
@@ -394,6 +424,21 @@ func (m *MockHostManagerInterface) GetOSPrettyName() (string, error) {
 func (mr *MockHostManagerInterfaceMockRecorder) GetOSPrettyName() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOSPrettyName", reflect.TypeOf((*MockHostManagerInterface)(nil).GetOSPrettyName))
+}
+
+// GetOVSBridges mocks base method.
+func (m *MockHostManagerInterface) GetOVSBridges(ctx context.Context) ([]v1.OVSConfigExt, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOVSBridges", ctx)
+	ret0, _ := ret[0].([]v1.OVSConfigExt)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetOVSBridges indicates an expected call of GetOVSBridges.
+func (mr *MockHostManagerInterfaceMockRecorder) GetOVSBridges(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOVSBridges", reflect.TypeOf((*MockHostManagerInterface)(nil).GetOVSBridges), ctx)
 }
 
 // GetPhysPortName mocks base method.
@@ -736,6 +781,20 @@ func (mr *MockHostManagerInterfaceMockRecorder) ReloadDriver(driver interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReloadDriver", reflect.TypeOf((*MockHostManagerInterface)(nil).ReloadDriver), driver)
 }
 
+// RemoveOVSBridge mocks base method.
+func (m *MockHostManagerInterface) RemoveOVSBridge(ctx context.Context, ifaceAddr string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveOVSBridge", ctx, ifaceAddr)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RemoveOVSBridge indicates an expected call of RemoveOVSBridge.
+func (mr *MockHostManagerInterfaceMockRecorder) RemoveOVSBridge(ctx, ifaceAddr interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveOVSBridge", reflect.TypeOf((*MockHostManagerInterface)(nil).RemoveOVSBridge), ctx, ifaceAddr)
+}
+
 // RemoveUdevRule mocks base method.
 func (m *MockHostManagerInterface) RemoveUdevRule(pfPciAddress string) error {
 	m.ctrl.T.Helper()
@@ -765,17 +824,17 @@ func (mr *MockHostManagerInterfaceMockRecorder) RemoveVfRepresentorUdevRule(pfPc
 }
 
 // ResetSriovDevice mocks base method.
-func (m *MockHostManagerInterface) ResetSriovDevice(ifaceStatus v1.InterfaceExt) error {
+func (m *MockHostManagerInterface) ResetSriovDevice(ifaceStatus v1.InterfaceExt, earlyBoot bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ResetSriovDevice", ifaceStatus)
+	ret := m.ctrl.Call(m, "ResetSriovDevice", ifaceStatus, earlyBoot)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ResetSriovDevice indicates an expected call of ResetSriovDevice.
-func (mr *MockHostManagerInterfaceMockRecorder) ResetSriovDevice(ifaceStatus interface{}) *gomock.Call {
+func (mr *MockHostManagerInterfaceMockRecorder) ResetSriovDevice(ifaceStatus, earlyBoot interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetSriovDevice", reflect.TypeOf((*MockHostManagerInterface)(nil).ResetSriovDevice), ifaceStatus)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetSriovDevice", reflect.TypeOf((*MockHostManagerInterface)(nil).ResetSriovDevice), ifaceStatus, earlyBoot)
 }
 
 // SetDevlinkDeviceParam mocks base method.

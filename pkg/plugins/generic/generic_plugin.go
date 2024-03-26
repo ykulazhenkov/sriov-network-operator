@@ -2,12 +2,14 @@ package generic
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"os/exec"
 	"reflect"
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -49,29 +51,29 @@ type DriverState struct {
 type DriverStateMapType map[uint]*DriverState
 
 type GenericPlugin struct {
-	PluginName          string
-	SpecVersion         string
-	DesireState         *sriovnetworkv1.SriovNetworkNodeState
-	LastState           *sriovnetworkv1.SriovNetworkNodeState
-	DriverStateMap      DriverStateMapType
-	DesiredKernelArgs   map[string]bool
-	helpers             helper.HostHelpersInterface
-	skipVFConfiguration bool
+	PluginName        string
+	SpecVersion       string
+	DesireState       *sriovnetworkv1.SriovNetworkNodeState
+	LastState         *sriovnetworkv1.SriovNetworkNodeState
+	DriverStateMap    DriverStateMapType
+	DesiredKernelArgs map[string]bool
+	helpers           helper.HostHelpersInterface
+	earlyBoot         bool
 }
 
 type Option = func(c *genericPluginOptions)
 
-// WithSkipVFConfiguration configures generic plugin to skip configuration of the VFs.
+// WithEarlyBootOption configures generic plugin to skip configuration of the VFs and managed bridges.
 // In this case PFs will be configured and VFs are created only, VF configuration phase is skipped.
 // VFs on the PF (if the PF is not ExternallyManaged) will have no driver after the plugin execution completes.
-func WithSkipVFConfiguration() Option {
+func WithEarlyBootOption() Option {
 	return func(c *genericPluginOptions) {
-		c.skipVFConfiguration = true
+		c.earlyBoot = true
 	}
 }
 
 type genericPluginOptions struct {
-	skipVFConfiguration bool
+	earlyBoot bool
 }
 
 const scriptsPath = "bindata/scripts/enable-kargs.sh"
@@ -105,12 +107,12 @@ func NewGenericPlugin(helpers helper.HostHelpersInterface, options ...Option) (p
 		DriverLoaded:   false,
 	}
 	return &GenericPlugin{
-		PluginName:          PluginName,
-		SpecVersion:         "1.0",
-		DriverStateMap:      driverStateMap,
-		DesiredKernelArgs:   make(map[string]bool),
-		helpers:             helpers,
-		skipVFConfiguration: cfg.skipVFConfiguration,
+		PluginName:        PluginName,
+		SpecVersion:       "1.0",
+		DriverStateMap:    driverStateMap,
+		DesiredKernelArgs: make(map[string]bool),
+		helpers:           helpers,
+		earlyBoot:         cfg.earlyBoot,
 	}, nil
 }
 
@@ -129,7 +131,7 @@ func (p *GenericPlugin) OnNodeStateChange(new *sriovnetworkv1.SriovNetworkNodeSt
 	log.Log.Info("generic plugin OnNodeStateChange()")
 	p.DesireState = new
 
-	needDrain = p.needDrainNode(new.Spec.Interfaces, new.Status.Interfaces)
+	needDrain = p.needDrainNode(new.Spec, new.Status)
 	needReboot, err = p.needRebootNode(new)
 	if err != nil {
 		return needDrain, needReboot, err
@@ -181,15 +183,64 @@ func (p *GenericPlugin) Apply() error {
 	}
 
 	if err := p.helpers.ConfigSriovInterfaces(p.helpers, p.DesireState.Spec.Interfaces,
-		p.DesireState.Status.Interfaces, p.skipVFConfiguration); err != nil {
+		p.DesireState.Status.Interfaces, p.earlyBoot); err != nil {
 		// Catch the "cannot allocate memory" error and try to use PCI realloc
 		if errors.Is(err, syscall.ENOMEM) {
 			p.addToDesiredKernelArgs(consts.KernelArgPciRealloc)
 		}
 		return err
 	}
+
+	if err := p.configureBridges(); err != nil {
+		return err
+	}
+
 	p.LastState = &sriovnetworkv1.SriovNetworkNodeState{}
 	*p.LastState = *p.DesireState
+	return nil
+}
+
+func (p *GenericPlugin) configureBridges() error {
+	if p.earlyBoot {
+		log.Log.Info("generic plugin Apply(): skip configuration of bridges during early boot")
+		return nil
+	}
+	if len(p.DesireState.Status.Bridges.OVS) == 0 && len(p.DesireState.Spec.Bridges.OVS) == 0 {
+		// there were not reported OVS bridges before the plugin was called and the spec doesn't contains bridges.
+		// In the PF configuration phase (ConfigSriovInterfaces function) bridges can be removed, but not created.
+		// This behavior allows us to assume that cleanup of the bridges is not required without calling OVSDB
+		return nil
+	}
+	for _, curBr := range p.DesireState.Status.Bridges.OVS {
+		found := false
+		for _, desiredBr := range p.DesireState.Spec.Bridges.OVS {
+			if curBr.Name == desiredBr.Name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			if len(curBr.Uplinks) != 1 || curBr.Uplinks[0].PciAddress == "" {
+				continue
+			}
+			timeoutCtx, cFunc := context.WithTimeout(context.Background(), time.Second*15)
+			defer cFunc()
+			if err := p.helpers.RemoveOVSBridge(timeoutCtx, curBr.Uplinks[0].PciAddress); err != nil {
+				log.Log.Error(err, "generic plugin Apply(): failed to remove OVS bridge", "bridge", curBr.Name)
+				return err
+			}
+		}
+	}
+	// create bridges, existing bridges will be updated only if the new config doesn't match current config
+	for _, desiredBr := range p.DesireState.Spec.Bridges.OVS {
+		desiredBr := desiredBr
+		timeoutCtx, cFunc := context.WithTimeout(context.Background(), time.Second*15)
+		defer cFunc()
+		if err := p.helpers.CreateOVSBridge(timeoutCtx, &desiredBr); err != nil {
+			log.Log.Error(err, "generic plugin Apply(): failed to create OVS bridge", "bridge", desiredBr.Name)
+			return err
+		}
+	}
 	return nil
 }
 
@@ -287,13 +338,13 @@ func (p *GenericPlugin) syncDesiredKernelArgs() (bool, error) {
 	return needReboot, nil
 }
 
-func (p *GenericPlugin) needDrainNode(desired sriovnetworkv1.Interfaces, current sriovnetworkv1.InterfaceExts) (needDrain bool) {
+func (p *GenericPlugin) needDrainNode(desired sriovnetworkv1.SriovNetworkNodeStateSpec, current sriovnetworkv1.SriovNetworkNodeStateStatus) (needDrain bool) {
 	log.Log.V(2).Info("generic plugin needDrainNode()", "current", current, "desired", desired)
 
 	needDrain = false
-	for _, ifaceStatus := range current {
+	for _, ifaceStatus := range current.Interfaces {
 		configured := false
-		for _, iface := range desired {
+		for _, iface := range desired.Interfaces {
 			if iface.PciAddress == ifaceStatus.PciAddress {
 				configured = true
 				if ifaceStatus.NumVfs == 0 {
@@ -339,6 +390,10 @@ func (p *GenericPlugin) needDrainNode(desired sriovnetworkv1.Interfaces, current
 			needDrain = true
 			return
 		}
+	}
+	if sriovnetworkv1.NeedToUpdateBridges(&desired.Bridges, &current.Bridges) {
+		log.Log.V(2).Info("generic plugin needDrainNode(): need drain since bridge configuration needs to be updated")
+		needDrain = true
 	}
 	return
 }

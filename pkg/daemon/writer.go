@@ -117,17 +117,27 @@ func (w *NodeStateStatusWriter) Run(stop <-chan struct{}, refresh <-chan Message
 func (w *NodeStateStatusWriter) pollNicStatus() error {
 	log.Log.V(2).Info("pollNicStatus()")
 	var iface []sriovnetworkv1.InterfaceExt
+	var bridges sriovnetworkv1.Bridges
 	var err error
 
 	if vars.PlatformType == consts.VirtualOpenStack {
 		iface, err = w.platformHelper.DiscoverSriovDevicesVirtual()
+		if err != nil {
+			return err
+		}
 	} else {
 		iface, err = w.hostHelper.DiscoverSriovDevices(w.hostHelper)
+		if err != nil {
+			return err
+		}
+		bridges, err = w.hostHelper.DiscoverBridges()
+		if err != nil {
+			return err
+		}
 	}
-	if err != nil {
-		return err
-	}
+
 	w.status.Interfaces = iface
+	w.status.Bridges = bridges
 
 	return nil
 }

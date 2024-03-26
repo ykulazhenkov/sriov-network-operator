@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"slices"
 	"sort"
@@ -319,6 +320,11 @@ func NeedToUpdateSriov(ifaceSpec *Interface, ifaceStatus *InterfaceExt) bool {
 		}
 	}
 	return false
+}
+
+// NeedToUpdateBridges returns true if bridge for the host requires update
+func NeedToUpdateBridges(bridgeSpec, bridgeStatus *Bridges) bool {
+	return !reflect.DeepEqual(bridgeSpec, bridgeStatus)
 }
 
 type ByPriority []SriovNetworkNodePolicy

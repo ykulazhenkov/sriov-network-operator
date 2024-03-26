@@ -17,17 +17,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	sriovnetworkv1 "github.com/k8snetworkplumbingwg/sriov-network-operator/api/v1"
-	"github.com/k8snetworkplumbingwg/sriov-network-operator/pkg/host/store"
+	ovsStorePkg "github.com/k8snetworkplumbingwg/sriov-network-operator/pkg/host/internal/ovs/store"
 	"github.com/k8snetworkplumbingwg/sriov-network-operator/pkg/host/types"
 	"github.com/k8snetworkplumbingwg/sriov-network-operator/pkg/vars"
 )
 
 // New creates new instance of the OVSInterface
-func New() types.OVSInterface {
-	return &ovs{}
+func New(store ovsStorePkg.OVSStore) types.OVSInterface {
+	return &ovs{store: store}
 }
 
-type ovs struct{}
+type ovs struct {
+	store ovsStorePkg.OVSStore
+}
 
 // OpenvSwitchEntry defines schema of the object in the Open_vSwitch table
 type OpenvSwitchEntry struct {
@@ -71,7 +73,7 @@ type PortEntry struct {
 // CreateOVSBridge creates OVS bridge from the provided config,
 // does nothing if OVS bridge with the right config already exist,
 // if OVS bridge exist with different config it will be removed and re-created
-func (c *ovs) CreateOVSBridge(ctx context.Context, conf *sriovnetworkv1.OVSConfigExt, storeManager store.ManagerInterface) error {
+func (c *ovs) CreateOVSBridge(ctx context.Context, conf *sriovnetworkv1.OVSConfigExt) error {
 	if len(conf.Uplinks) != 1 {
 		return fmt.Errorf("unsupported configuration, uplinks list must contain one element")
 	}
@@ -85,12 +87,12 @@ func (c *ovs) CreateOVSBridge(ctx context.Context, conf *sriovnetworkv1.OVSConfi
 	}
 	defer dbClient.Close()
 
-	knownConfig := storeManager.GetManagedOVSBridge(conf.Name)
+	knownConfig := c.store.GetManagedOVSBridge(conf.Name)
 	if knownConfig == nil || !reflect.DeepEqual(conf, knownConfig) {
 		funcLog.V(2).Info("CreateOVSBridge(): save current configuration to the store")
 		// config in store manager is not found or it is not the same config as passed with conf arg,
 		// update config in the store manager
-		if err := storeManager.AddManagedOVSBridge(conf); err != nil {
+		if err := c.store.AddManagedOVSBridge(conf); err != nil {
 			funcLog.Error(err, "CreateOVSBridge(): failed to save current configuration to the store")
 			return err
 		}
@@ -165,7 +167,7 @@ func (c *ovs) CreateOVSBridge(ctx context.Context, conf *sriovnetworkv1.OVSConfi
 }
 
 // GetOVSBridges returns configuration for all managed bridges
-func (c *ovs) GetOVSBridges(ctx context.Context, storeManager store.ManagerInterface) ([]sriovnetworkv1.OVSConfigExt, error) {
+func (c *ovs) GetOVSBridges(ctx context.Context) ([]sriovnetworkv1.OVSConfigExt, error) {
 	funcLog := log.Log
 	funcLog.V(2).Info("GetOVSBridges(): get managed OVS bridges")
 
@@ -176,7 +178,7 @@ func (c *ovs) GetOVSBridges(ctx context.Context, storeManager store.ManagerInter
 	}
 	defer dbClient.Close()
 
-	knownConfigs := storeManager.GetManagedOVSBridges()
+	knownConfigs := c.store.GetManagedOVSBridges()
 	result := make([]sriovnetworkv1.OVSConfigExt, 0, len(knownConfigs))
 	for _, knownConfig := range knownConfigs {
 		currentState, err := c.getCurrentBridgeState(ctx, dbClient, knownConfig)
@@ -197,10 +199,10 @@ func (c *ovs) GetOVSBridges(ctx context.Context, storeManager store.ManagerInter
 }
 
 // RemoveOVSBridge removes OVS bridge to which PF with ifaceAddr is attached
-func (c *ovs) RemoveOVSBridge(ctx context.Context, ifaceAddr string, storeManager store.ManagerInterface) error {
+func (c *ovs) RemoveOVSBridge(ctx context.Context, ifaceAddr string) error {
 	funcLog := log.Log.WithValues("ifaceAddr", ifaceAddr)
 	funcLog.V(2).Info("RemoveOVSBridge(): remove managed bridge for the interface")
-	knownConfigs := storeManager.GetManagedOVSBridges()
+	knownConfigs := c.store.GetManagedOVSBridges()
 	var relatedBridges []*sriovnetworkv1.OVSConfigExt
 	for _, kc := range knownConfigs {
 		if len(kc.Uplinks) == 1 && kc.Uplinks[0].PciAddress == ifaceAddr {
@@ -236,7 +238,7 @@ func (c *ovs) RemoveOVSBridge(ctx context.Context, ifaceAddr string, storeManage
 		}
 
 		funcLog.V(2).Info("RemoveOVSBridge(): remove information about the bridge from the store", "bridge", brConf.Name)
-		if err := storeManager.RemoveManagedOVSBridge(brConf.Name); err != nil {
+		if err := c.store.RemoveManagedOVSBridge(brConf.Name); err != nil {
 			funcLog.Error(err, "RemoveOVSBridge(): failed to remove information from the store", "bridge", brConf.Name)
 			return err
 		}
