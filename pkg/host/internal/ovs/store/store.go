@@ -34,8 +34,7 @@ type OVSStore interface {
 // New returns default implementation of OVSStore interfaces
 func New() (OVSStore, error) {
 	s := &ovsStore{
-		lock:          &sync.RWMutex{},
-		storeFilePath: utils.GetHostExtensionPath(consts.ManagedOVSBridgesPath),
+		lock: &sync.RWMutex{},
 	}
 	var err error
 	err = s.ensureStoreDirExist()
@@ -50,9 +49,8 @@ func New() (OVSStore, error) {
 }
 
 type ovsStore struct {
-	lock          *sync.RWMutex
-	cache         map[string]sriovnetworkv1.OVSConfigExt
-	storeFilePath string
+	lock  *sync.RWMutex
+	cache map[string]sriovnetworkv1.OVSConfigExt
 }
 
 // GetManagedOVSBridges returns map with saved information about managed OVS bridges.
@@ -110,7 +108,7 @@ func (s *ovsStore) RemoveManagedOVSBridge(name string) error {
 }
 
 func (s *ovsStore) ensureStoreDirExist() error {
-	storeDir := filepath.Dir(s.storeFilePath)
+	storeDir := filepath.Dir(s.getStoreFilePath())
 	_, err := os.Stat(storeDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -126,10 +124,11 @@ func (s *ovsStore) ensureStoreDirExist() error {
 }
 
 func (s *ovsStore) readStoreFile() (map[string]sriovnetworkv1.OVSConfigExt, error) {
-	funcLog := log.Log.WithValues("storeFilePath", s.storeFilePath)
+	storeFilePath := s.getStoreFilePath()
+	funcLog := log.Log.WithValues("storeFilePath", storeFilePath)
 	funcLog.V(2).Info("readStoreFile(): read OVS store file")
 	result := map[string]sriovnetworkv1.OVSConfigExt{}
-	data, err := os.ReadFile(s.storeFilePath)
+	data, err := os.ReadFile(storeFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			funcLog.V(2).Info("readStoreFile(): OVS store file not found")
@@ -145,15 +144,20 @@ func (s *ovsStore) readStoreFile() (map[string]sriovnetworkv1.OVSConfigExt, erro
 }
 
 func (s *ovsStore) writeStoreFile() error {
-	funcLog := log.Log.WithValues("storeFilePath", s.storeFilePath)
+	storeFilePath := s.getStoreFilePath()
+	funcLog := log.Log.WithValues("storeFilePath", storeFilePath)
 	data, err := json.Marshal(s.cache)
 	if err != nil {
 		funcLog.Error(err, "writeStoreFile(): can't serialize cached info about managed OVS bridges")
 		return err
 	}
-	if err := renameio.WriteFile(s.storeFilePath, data, 0644); err != nil {
+	if err := renameio.WriteFile(storeFilePath, data, 0644); err != nil {
 		funcLog.Error(err, "writeStoreFile(): can't write info about managed OVS bridge to disk")
 		return err
 	}
 	return nil
+}
+
+func (s *ovsStore) getStoreFilePath() string {
+	return utils.GetHostExtensionPath(consts.ManagedOVSBridgesPath)
 }
