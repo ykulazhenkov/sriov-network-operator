@@ -106,18 +106,20 @@ func (c *ovs) CreateOVSBridge(ctx context.Context, conf *sriovnetworkv1.OVSConfi
 			funcLog.Error(err, "CreateOVSBridge(): failed to query current bridge state")
 			return err
 		}
-		if reflect.DeepEqual(conf, currentState) {
-			// bridge already exist with the right config
-			funcLog.V(2).Info("CreateOVSBridge(): bridge state already match current configuration, no actions required")
-			return nil
-		}
-		funcLog.V(2).Info("CreateOVSBridge(): bridge state differs from the current configuration, reconfiguration required")
-		keepBridge = reflect.DeepEqual(conf.Bridge, currentState.Bridge)
-		if !keepBridge {
-			funcLog.V(2).Info("CreateOVSBridge(): remove existing bridge")
-			if err := c.deleteBridge(ctx, dbClient, conf.Name); err != nil {
-				funcLog.Error(err, "CreateOVSBridge(): failed to remove existing bridge")
-				return err
+		if currentState != nil {
+			if reflect.DeepEqual(conf, currentState) {
+				// bridge already exist with the right config
+				funcLog.V(2).Info("CreateOVSBridge(): bridge state already match current configuration, no actions required")
+				return nil
+			}
+			funcLog.V(2).Info("CreateOVSBridge(): bridge state differs from the current configuration, reconfiguration required")
+			keepBridge = reflect.DeepEqual(conf.Bridge, currentState.Bridge)
+			if !keepBridge {
+				funcLog.V(2).Info("CreateOVSBridge(): remove existing bridge")
+				if err := c.deleteBridge(ctx, dbClient, conf.Name); err != nil {
+					funcLog.Error(err, "CreateOVSBridge(): failed to remove existing bridge")
+					return err
+				}
 			}
 		}
 	} else {
@@ -186,7 +188,9 @@ func (c *ovs) GetOVSBridges(ctx context.Context) ([]sriovnetworkv1.OVSConfigExt,
 			funcLog.Error(err, "GetOVSBridges(): failed to get state for the managed bridge", "bridge", knownConfig.Name)
 			return nil, err
 		}
-		result = append(result, *currentState)
+		if currentState != nil {
+			result = append(result, *currentState)
+		}
 	}
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].Name < result[j].Name

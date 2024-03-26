@@ -130,7 +130,12 @@ func (w *NodeStateStatusWriter) pollNicStatus() error {
 		if err != nil {
 			return err
 		}
+		exit, err := w.hostHelper.Chroot(consts.Host)
+		if err != nil {
+			return err
+		}
 		bridges, err = w.hostHelper.DiscoverBridges()
+		exit()
 		if err != nil {
 			return err
 		}
