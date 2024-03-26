@@ -38,7 +38,7 @@ func New() (OVSStore, error) {
 		storeFilePath: utils.GetHostExtensionPath(consts.ManagedOVSBridgesPath),
 	}
 	var err error
-	err = s.ensureBasePathExist()
+	err = s.ensureStoreDirExist()
 	if err != nil {
 		return nil, err
 	}
@@ -109,17 +109,17 @@ func (s *ovsStore) RemoveManagedOVSBridge(name string) error {
 	return s.writeStoreFile()
 }
 
-func (s *ovsStore) ensureBasePathExist() error {
-	basePath := filepath.Base(s.storeFilePath)
-	_, err := os.Stat(basePath)
+func (s *ovsStore) ensureStoreDirExist() error {
+	storeDir := filepath.Dir(s.storeFilePath)
+	_, err := os.Stat(storeDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			err = os.MkdirAll(basePath, os.ModeDir)
+			err = os.MkdirAll(storeDir, os.ModeDir)
 			if err != nil {
-				return fmt.Errorf("failed to create base path for store %s: %v", basePath, err)
+				return fmt.Errorf("failed to create directory for store %s: %v", storeDir, err)
 			}
 		} else {
-			return fmt.Errorf("failed to check if base path for store exist %s: %v", basePath, err)
+			return fmt.Errorf("failed to check if directory for store exist %s: %v", storeDir, err)
 		}
 	}
 	return nil
