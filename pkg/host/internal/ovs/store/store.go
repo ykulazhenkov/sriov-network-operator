@@ -64,9 +64,9 @@ func (s *ovsStore) GetManagedOVSBridges() map[string]*sriovnetworkv1.OVSConfigEx
 	for k, v := range s.cache {
 		result[k] = v.DeepCopy()
 	}
-	if funcLog.V(3).Enabled() {
+	if funcLog.V(2).Enabled() {
 		data, _ := json.Marshal(result)
-		funcLog.V(3).Info("GetManagedOVSBridges()", "result", string(data))
+		funcLog.V(2).Info("GetManagedOVSBridges()", "result", string(data))
 	}
 	return result
 }
@@ -82,9 +82,9 @@ func (s *ovsStore) GetManagedOVSBridge(name string) *sriovnetworkv1.OVSConfigExt
 		funcLog.V(2).Info("GetManagedOVSBridge(): bridge info not found")
 		return nil
 	}
-	if funcLog.V(3).Enabled() {
+	if funcLog.V(2).Enabled() {
 		data, _ := json.Marshal(&b)
-		funcLog.V(3).Info("GetManagedOVSBridge()", "result", string(data))
+		funcLog.V(2).Info("GetManagedOVSBridge()", "result", string(data))
 	}
 	return b.DeepCopy()
 }

@@ -197,9 +197,9 @@ func (c *ovs) GetOVSBridges(ctx context.Context) ([]sriovnetworkv1.OVSConfigExt,
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].Name < result[j].Name
 	})
-	if funcLog.V(3).Enabled() {
+	if funcLog.V(2).Enabled() {
 		data, _ := json.Marshal(&result)
-		funcLog.V(3).Info("GetOVSBridges()", "result", string(data))
+		funcLog.V(2).Info("GetOVSBridges()", "result", string(data))
 	}
 	return result, nil
 }
