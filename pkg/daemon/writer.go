@@ -184,6 +184,7 @@ func (w *NodeStateStatusWriter) updateNodeStateStatusRetry(f func(*sriovnetworkv
 func (w *NodeStateStatusWriter) setNodeStateStatus(msg Message) (*sriovnetworkv1.SriovNetworkNodeState, error) {
 	nodeState, err := w.updateNodeStateStatusRetry(func(nodeState *sriovnetworkv1.SriovNetworkNodeState) {
 		nodeState.Status.Interfaces = w.status.Interfaces
+		nodeState.Status.Bridges = w.status.Bridges
 		if msg.lastSyncError != "" || msg.syncStatus == consts.SyncStatusSucceeded {
 			// clear lastSyncError when sync Succeeded
 			nodeState.Status.LastSyncError = msg.lastSyncError
