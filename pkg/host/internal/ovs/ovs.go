@@ -137,6 +137,7 @@ func (c *ovs) CreateOVSBridge(ctx context.Context, conf *sriovnetworkv1.OVSConfi
 		funcLog.V(2).Info("CreateOVSBridge(): create OVS bridge")
 		if err := c.createBridge(ctx, dbClient, &BridgeEntry{
 			Name:         conf.Name,
+			UUID:         uuid.NewString(),
 			DatapathType: conf.Bridge.DatapathType,
 			ExternalIDs:  conf.Bridge.ExternalIDs,
 			OtherConfig:  conf.Bridge.ExternalIDs,
@@ -157,6 +158,7 @@ func (c *ovs) CreateOVSBridge(ctx context.Context, conf *sriovnetworkv1.OVSConfi
 	funcLog.V(2).Info("CreateOVSBridge(): add uplink interface to the bridge")
 	if err := c.addInterface(ctx, dbClient, bridge, &InterfaceEntry{
 		Name:        conf.Uplinks[0].Name,
+		UUID:        uuid.NewString(),
 		Type:        conf.Uplinks[0].Interface.Type,
 		Options:     conf.Uplinks[0].Interface.Options,
 		ExternalIDs: conf.Uplinks[0].Interface.ExternalIDs,
