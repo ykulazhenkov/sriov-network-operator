@@ -264,13 +264,13 @@ func (k *kernel) TryEnableRdma() (bool, error) {
 	chrootDefinition := utils.GetChrootExtension()
 
 	// check if the driver is already loaded in to the system
-	_, stderr, mlx4Err := k.utilsHelper.RunCommand("/bin/sh", "-c", fmt.Sprintf("grep --quiet 'mlx4_en' <(%s lsmod)", chrootDefinition))
+	_, stderr, mlx4Err := k.utilsHelper.RunCommand("/bin/sh", "-c", fmt.Sprintf("%s lsmod | grep --quiet 'mlx4_en'", chrootDefinition))
 	if mlx4Err != nil && len(stderr) != 0 {
 		log.Log.Error(mlx4Err, "tryEnableRdma(): failed to check for kernel module 'mlx4_en'", "stderr", stderr)
 		return false, fmt.Errorf(stderr)
 	}
 
-	_, stderr, mlx5Err := k.utilsHelper.RunCommand("/bin/sh", "-c", fmt.Sprintf("grep --quiet 'mlx5_core' <(%s lsmod)", chrootDefinition))
+	_, stderr, mlx5Err := k.utilsHelper.RunCommand("/bin/sh", "-c", fmt.Sprintf("%s lsmod | grep --quiet 'mlx5_core'", chrootDefinition))
 	if mlx5Err != nil && len(stderr) != 0 {
 		log.Log.Error(mlx5Err, "tryEnableRdma(): failed to check for kernel module 'mlx5_core'", "stderr", stderr)
 		return false, fmt.Errorf(stderr)
@@ -463,7 +463,7 @@ func (k *kernel) RdmaIsLoaded() (bool, error) {
 	chrootDefinition := utils.GetChrootExtension()
 
 	// check if the driver is already loaded in to the system
-	_, stderr, err := k.utilsHelper.RunCommand("/bin/sh", "-c", fmt.Sprintf("grep --quiet '\\(^ib\\|^rdma\\)' <(%s lsmod)", chrootDefinition))
+	_, stderr, err := k.utilsHelper.RunCommand("/bin/sh", "-c", fmt.Sprintf("%s lsmod | grep --quiet '\\(^ib\\|^rdma\\)'", chrootDefinition))
 	if err != nil && len(stderr) != 0 {
 		log.Log.Error(err, "RdmaIsLoaded(): fail to check if ib and rdma kernel modules are loaded", "stderr", stderr)
 		return false, fmt.Errorf(stderr)
