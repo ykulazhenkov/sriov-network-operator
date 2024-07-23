@@ -127,9 +127,15 @@ func (dn *Daemon) Run(stopCh <-chan struct{}, exitCh <-chan error) error {
 		log.Log.V(0).Info("Run(): start daemon.")
 	}
 
+	// Ensure that RDMA package is installed on the host OS and RDMA module is loaded.
+	// When the operator is running in the systemd mode we will execute this function again on the host start.
+	// The reason why we call it here for the systemd mode is because we need to make sure that the required
+	// RDMA package is installed.
+	// We will not be able to install the required package during the boot because network is not available yet.
+	dn.HostHelpers.TryEnableRdma()
+
 	if !vars.UsingSystemdMode {
 		log.Log.V(0).Info("Run(): daemon running in daemon mode")
-		dn.HostHelpers.TryEnableRdma()
 		dn.HostHelpers.TryEnableTun()
 		dn.HostHelpers.TryEnableVhostNet()
 		err := systemd.CleanSriovFilesFromHost(vars.ClusterType == consts.ClusterTypeOpenshift)
