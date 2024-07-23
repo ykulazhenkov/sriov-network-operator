@@ -343,7 +343,7 @@ func (k *kernel) EnableRDMAOnRHELMachine() (bool, error) {
 		}
 
 		// if ib kernel module is not loaded trigger a loading
-		if isRDMALoaded {
+		if !isRDMALoaded {
 			err = k.TriggerUdevEvent()
 			if err != nil {
 				log.Log.Error(err, "EnableRDMAOnRHELMachine() failed to trigger udev event")
@@ -372,7 +372,7 @@ func (k *kernel) EnableRDMAOnUbuntuMachine() (bool, error) {
 		}
 
 		// if ib kernel module is not loaded trigger a loading
-		if isRDMALoaded {
+		if !isRDMALoaded {
 			err = k.TriggerUdevEvent()
 			if err != nil {
 				log.Log.Error(err, "EnableRDMAOnUbuntuMachine() failed to trigger udev event")
