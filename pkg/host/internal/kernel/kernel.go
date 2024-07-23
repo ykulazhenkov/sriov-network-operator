@@ -445,17 +445,18 @@ func (k *kernel) IsUbuntuSystem() (bool, error) {
 		return false, err
 	}
 
-	stdout, stderr, err := k.utilsHelper.RunCommand("/bin/sh", "-c", fmt.Sprintf("grep -i --quiet 'ubuntu' %s", path))
+	_, stderr, err := k.utilsHelper.RunCommand("/bin/sh", "-c", fmt.Sprintf("grep -i --quiet 'ubuntu' %s", path))
 	if err != nil && len(stderr) != 0 {
+		// unexpected error occurred
 		log.Log.Error(err, "IsUbuntuSystem(): failed to check for ubuntu operating system name in os-releasae file", "stderr", stderr)
 		return false, fmt.Errorf(stderr)
 	}
-
-	if len(stdout) > 0 {
-		return true, nil
+	if err != nil {
+		// empty stderr, non-zero exit code, assume grep didn't find the the string
+		return false, nil
 	}
-
-	return false, nil
+	// zero exit code
+	return true, nil
 }
 
 func (k *kernel) RdmaIsLoaded() (bool, error) {
