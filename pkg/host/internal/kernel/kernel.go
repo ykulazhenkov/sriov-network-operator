@@ -86,12 +86,7 @@ func (k *kernel) TryEnableVhostNet() {
 
 // GetCurrentKernelArgs This retrieves the kernel cmd line arguments
 func (k *kernel) GetCurrentKernelArgs() (string, error) {
-	path := consts.ProcKernelCmdLine
-	if !vars.UsingSystemdMode {
-		path = filepath.Join(consts.Host, path)
-	}
-
-	path = filepath.Join(vars.FilesystemRoot, path)
+	path := utils.GetHostExtensionPath(consts.ProcKernelCmdLine)
 	cmdLine, err := os.ReadFile(path)
 	if err != nil {
 		return "", fmt.Errorf("GetCurrentKernelArgs(): Error reading %s: %v", path, err)
@@ -391,10 +386,7 @@ func (k *kernel) EnableRDMAOnUbuntuMachine() (bool, error) {
 
 func (k *kernel) IsRHELSystem() (bool, error) {
 	log.Log.Info("IsRHELSystem(): checking for RHEL machine")
-	path := internal.RedhatReleaseFile
-	if !vars.UsingSystemdMode {
-		path = filepath.Join(internal.HostPathFromDaemon, path)
-	}
+	path := utils.GetHostExtensionPath(internal.RedhatReleaseFile)
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
 			log.Log.V(2).Info("IsRHELSystem() not a RHEL machine")
@@ -410,11 +402,7 @@ func (k *kernel) IsRHELSystem() (bool, error) {
 
 func (k *kernel) IsCoreOS() (bool, error) {
 	log.Log.Info("IsCoreOS(): checking for CoreOS machine")
-	path := internal.RedhatReleaseFile
-	if !vars.UsingSystemdMode {
-		path = filepath.Join(internal.HostPathFromDaemon, path)
-	}
-
+	path := utils.GetHostExtensionPath(internal.RedhatReleaseFile)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		log.Log.Error(err, "IsCoreOS(): failed to read RHEL release file on path", "path", path)
@@ -430,11 +418,7 @@ func (k *kernel) IsCoreOS() (bool, error) {
 
 func (k *kernel) IsUbuntuSystem() (bool, error) {
 	log.Log.Info("IsUbuntuSystem(): checking for Ubuntu machine")
-	path := internal.GenericOSReleaseFile
-	if !vars.UsingSystemdMode {
-		path = filepath.Join(internal.HostPathFromDaemon, path)
-	}
-
+	path := utils.GetHostExtensionPath(internal.GenericOSReleaseFile)
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
 			log.Log.Error(nil, "IsUbuntuSystem() os-release on path doesn't exist", "path", path)
@@ -478,10 +462,7 @@ func (k *kernel) RdmaIsLoaded() (bool, error) {
 }
 
 func (k *kernel) EnableRDMA(conditionFilePath, serviceName, packageManager string) (bool, error) {
-	path := conditionFilePath
-	if !vars.UsingSystemdMode {
-		path = filepath.Join(internal.HostPathFromDaemon, path)
-	}
+	path := utils.GetHostExtensionPath(conditionFilePath)
 	log.Log.Info("EnableRDMA(): checking for service file", "path", path)
 
 	if _, err := os.Stat(path); err != nil {
@@ -554,11 +535,7 @@ func (k *kernel) ReloadDriver(driverName string) error {
 }
 
 func (k *kernel) GetOSPrettyName() (string, error) {
-	path := internal.GenericOSReleaseFile
-	if !vars.UsingSystemdMode {
-		path = filepath.Join(internal.HostPathFromDaemon, path)
-	}
-
+	path := utils.GetHostExtensionPath(internal.GenericOSReleaseFile)
 	log.Log.Info("GetOSPrettyName(): getting os name from os-release file")
 
 	stdout, stderr, err := k.utilsHelper.RunCommand("/bin/sh", "-c", fmt.Sprintf("cat %s | grep PRETTY_NAME | cut -c 13-", path))
