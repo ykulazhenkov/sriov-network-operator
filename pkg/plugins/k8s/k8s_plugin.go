@@ -146,9 +146,13 @@ func (p *K8sPlugin) OnNodeStateChange(new *sriovnetworkv1.SriovNetworkNodeState)
 	}
 
 	if p.updateTarget.needReboot() {
-		needDrain = true
-		needReboot = true
-		log.Log.Info("k8s plugin OnNodeStateChange(): needReboot to update", "target", p.updateTarget)
+		if new.GetGeneration() == 1 && len(new.Spec.Interfaces) == 0 {
+			log.Log.Info("k8s plugin OnNodeStateChange(): update required, skip reboot because spec is not set yet", "target", p.updateTarget)
+		} else {
+			needDrain = true
+			needReboot = true
+			log.Log.Info("k8s plugin OnNodeStateChange(): needReboot to update", "target", p.updateTarget)
+		}
 	}
 
 	return
