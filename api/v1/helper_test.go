@@ -1505,29 +1505,35 @@ func TestGenerateBridgeName(t *testing.T) {
 	}
 }
 
-func TestNeedToUpdateBridges(t *testing.T) {
+func TestNeedToUpdateOVSBridge(t *testing.T) {
 	testtable := []struct {
 		tname          string
-		specBridge     *v1.Bridges
-		statusBridge   *v1.Bridges
+		specBridge     *v1.OVSConfigExt
+		statusBridge   *v1.OVSConfigExt
 		expectedResult bool
 	}{
 		{
 			tname:          "no update required",
-			specBridge:     &v1.Bridges{OVS: []v1.OVSConfigExt{{Bridge: v1.OVSBridgeConfig{DatapathType: "test"}}}},
-			statusBridge:   &v1.Bridges{OVS: []v1.OVSConfigExt{{Bridge: v1.OVSBridgeConfig{DatapathType: "test"}}}},
+			specBridge:     &v1.OVSConfigExt{Bridge: v1.OVSBridgeConfig{DatapathType: "test"}},
+			statusBridge:   &v1.OVSConfigExt{Bridge: v1.OVSBridgeConfig{DatapathType: "test"}},
 			expectedResult: false,
 		},
 		{
 			tname:          "update required",
-			specBridge:     &v1.Bridges{OVS: []v1.OVSConfigExt{{Bridge: v1.OVSBridgeConfig{DatapathType: "test"}}}},
-			statusBridge:   &v1.Bridges{OVS: []v1.OVSConfigExt{}},
+			specBridge:     &v1.OVSConfigExt{Bridge: v1.OVSBridgeConfig{DatapathType: "test"}},
+			statusBridge:   &v1.OVSConfigExt{},
+			expectedResult: true,
+		},
+		{
+			tname:          "update required",
+			specBridge:     &v1.OVSConfigExt{Name: "br1", Bridge: v1.OVSBridgeConfig{DatapathType: "test"}},
+			statusBridge:   &v1.OVSConfigExt{Name: "br2", Bridge: v1.OVSBridgeConfig{DatapathType: "test"}},
 			expectedResult: true,
 		},
 	}
 	for _, tc := range testtable {
 		t.Run(tc.tname, func(t *testing.T) {
-			result := v1.NeedToUpdateBridges(tc.specBridge, tc.statusBridge)
+			result := v1.NeedToUpdateOVSBridge(tc.specBridge, tc.statusBridge)
 			if result != tc.expectedResult {
 				t.Errorf("unexpected result want: %t got: %t", tc.expectedResult, result)
 			}

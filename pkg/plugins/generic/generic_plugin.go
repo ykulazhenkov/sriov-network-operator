@@ -172,12 +172,23 @@ func (p *GenericPlugin) CheckStatusChanges(current *sriovnetworkv1.SriovNetworkN
 	}
 
 	if p.shouldConfigureBridges() {
-		if sriovnetworkv1.NeedToUpdateBridges(&current.Spec.Bridges, &current.Status.Bridges) {
-			log.Log.Info("CheckStatusChanges(): bridge configuration needs to be updated")
-			return true, nil
+		for _, bridge := range current.Spec.Bridges.OVS {
+			found := false
+			for _, bridgeStatus := range current.Status.Bridges.OVS {
+				if bridgeStatus.Name == bridge.Name {
+					found = true
+					if sriovnetworkv1.NeedToUpdateOVSBridge(&bridge, &bridgeStatus) {
+						log.Log.Info("CheckStatusChanges(): status changed for bridge", "bridge", bridge.Name)
+						return true, nil
+					}
+					break
+				}
+			}
+			if !found {
+				log.Log.Info("CheckStatusChanges(): no status found for bridge", "bridge", bridge.Name)
+			}
 		}
 	}
-
 	missingKernelArgs, err := p.getMissingKernelArgs()
 	if err != nil {
 		log.Log.Error(err, "generic-plugin CheckStatusChanges(): failed to verify missing kernel arguments")
@@ -352,14 +363,7 @@ func (p *GenericPlugin) needDrainNode(desired sriovnetworkv1.SriovNetworkNodeSta
 	if p.needToUpdateVFs(desired, current) {
 		return true
 	}
-
-	if p.shouldConfigureBridges() {
-		if sriovnetworkv1.NeedToUpdateBridges(&desired.Bridges, &current.Bridges) {
-			log.Log.V(2).Info("generic plugin needDrainNode(): need drain since bridge configuration needs to be updated")
-			return true
-		}
-	}
-	return false
+	return p.needToUpdateBridges(desired, current)
 }
 
 func (p *GenericPlugin) needToUpdateVFs(desired sriovnetworkv1.SriovNetworkNodeStateSpec, current sriovnetworkv1.SriovNetworkNodeStateStatus) bool {
@@ -410,6 +414,46 @@ func (p *GenericPlugin) needToUpdateVFs(desired sriovnetworkv1.SriovNetworkNodeS
 			return true
 		}
 	}
+	return false
+}
+
+func (p *GenericPlugin) needToUpdateBridges(desired sriovnetworkv1.SriovNetworkNodeStateSpec, current sriovnetworkv1.SriovNetworkNodeStateStatus) bool {
+	if !p.shouldConfigureBridges() {
+		return false
+	}
+	for _, bridgeStatus := range current.Bridges.OVS {
+		configured := false
+		for _, bridgeConf := range desired.Bridges.OVS {
+			if bridgeConf.Name == bridgeStatus.Name {
+				configured = true
+				if sriovnetworkv1.NeedToUpdateOVSBridge(&bridgeConf, &bridgeStatus) {
+					log.Log.V(2).Info("generic plugin needToUpdateBridges(): bridge config mismatch", "bridge", bridgeStatus.Name)
+					return true
+				}
+				break
+			}
+		}
+		if configured {
+			// bridge config up to date, check next bridge
+			log.Log.V(2).Info("generic plugin needToUpdateBridges(): bridge config is up to date", "bridge", bridgeStatus.Name)
+			continue
+		}
+		if len(bridgeStatus.Uplinks) > 0 {
+			_, exist, err := p.helpers.LoadPfsStatus(bridgeStatus.Uplinks[0].PciAddress)
+			if err != nil {
+				log.Log.Error(err, "generic plugin needToUpdateBridges(): failed to load info about PF status for pci device, assume PF is managed and bridge should be removed",
+					"address", bridgeStatus.Uplinks[0].PciAddress, "bridge", bridgeStatus.Name)
+				return true
+			}
+			if !exist {
+				log.Log.V(2).Info("generic plugin needToUpdateBridges(): bridge contains PF that is not managed by the operator, ignore the bridge", "bridge", bridgeStatus.Name)
+				continue
+			}
+		}
+		log.Log.V(2).Info("generic plugin needToUpdateBridges(): bridge should be removed", "bridge", bridgeStatus.Name)
+		return true
+	}
+	log.Log.V(2).Info("generic plugin needToUpdateBridges(): configuration for managed bridges is up to date")
 	return false
 }
 

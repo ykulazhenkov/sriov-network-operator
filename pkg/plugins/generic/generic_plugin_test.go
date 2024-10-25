@@ -1212,6 +1212,51 @@ var _ = Describe("Generic plugin", func() {
 		Expect(needReboot).To(BeFalse())
 		Expect(needDrain).To(BeTrue())
 	})
+	It("should not drain - no last applied state for the interface", func() {
+		hostHelper.EXPECT().LoadPfsStatus("0000:d8:00.0").Return(nil, false, nil).MinTimes(1)
+		networkNodeState := &sriovnetworkv1.SriovNetworkNodeState{
+			Spec: sriovnetworkv1.SriovNetworkNodeStateSpec{},
+			Status: sriovnetworkv1.SriovNetworkNodeStateStatus{
+				Interfaces: sriovnetworkv1.InterfaceExts{{
+					PciAddress:     "0000:d8:00.0",
+					NumVfs:         1,
+					TotalVfs:       1,
+					DeviceID:       "a2d6",
+					Vendor:         "15b3",
+					Name:           "enp216s0f0np0",
+					Mtu:            1500,
+					Mac:            "0c:42:a1:55:ee:46",
+					Driver:         "mlx5_core",
+					EswitchMode:    "switchdev",
+					LinkSpeed:      "25000 Mb/s",
+					LinkType:       "ETH",
+					LinkAdminState: "up",
+					VFs: []sriovnetworkv1.VirtualFunction{{
+						PciAddress: "0000:d8:00.2",
+						DeviceID:   "101e",
+						Vendor:     "15b3",
+						VfID:       0,
+						Name:       "enp216s0f0v0",
+						Mtu:        1500,
+						Mac:        "8e:d6:2c:62:87:1b",
+						Driver:     "mlx5_core",
+					}},
+				}},
+				Bridges: sriovnetworkv1.Bridges{
+					OVS: []sriovnetworkv1.OVSConfigExt{{
+						Name: "br-0000_d8_00.0",
+						Uplinks: []sriovnetworkv1.OVSUplinkConfigExt{{
+							PciAddress: "0000:d8:00.0",
+							Name:       "enp216s0f0np0",
+						}},
+					}},
+				},
+			}}
+		needDrain, needReboot, err := genericPlugin.OnNodeStateChange(networkNodeState)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(needReboot).To(BeFalse())
+		Expect(needDrain).To(BeFalse())
+	})
 	It("check status - bridge config mismatch", func() {
 		networkNodeState := &sriovnetworkv1.SriovNetworkNodeState{
 			Spec: sriovnetworkv1.SriovNetworkNodeStateSpec{

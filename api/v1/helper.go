@@ -1000,7 +1000,7 @@ func GenerateBridgeName(iface *InterfaceExt) string {
 	return fmt.Sprintf("br-%s", strings.ReplaceAll(iface.PciAddress, ":", "_"))
 }
 
-// NeedToUpdateBridges returns true if bridge for the host requires update
-func NeedToUpdateBridges(bridgeSpec, bridgeStatus *Bridges) bool {
+// NeedToUpdateOVSBridge returns true if OVS bridge requires update
+func NeedToUpdateOVSBridge(bridgeSpec, bridgeStatus *OVSConfigExt) bool {
 	return !reflect.DeepEqual(bridgeSpec, bridgeStatus)
 }
